@@ -2,6 +2,7 @@ using BookmarkIndexer.Core.Model;
 using BookmarkIndexer.Core.Modules.Bookmarks;
 using BookmarkIndexer.Core.Modules.Imports;
 using BookmarkIndexer.Core.Modules.Indexing;
+using BookmarkIndexer.Core.Modules.Search;
 using BookmarkIndexer.Shared;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -22,6 +23,7 @@ public static class DependencyInjection
         services.AddScoped<ImportService>();
         services.AddScoped<BookmarkService>();
         services.AddScoped<IndexService>();
+        services.AddScoped<SearchService>();
         return services;
     }
 }

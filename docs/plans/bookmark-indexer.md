@@ -95,7 +95,7 @@ First step of execution: copy this plan to `docs/plans/bookmark-indexer.md` (wor
 - **Behaviour:** `GET /api/search?q=` embeds the query. One SQL query takes the top 50 chunks by vector similarity and the top 50 by `ts_rank` (`websearch_to_tsquery`), merges them with RRF (k = 60) and groups them by bookmark. It returns the top 20 as `SearchResultDto(bookmarkId, url, title, folderPath, snippet, score)`. The Search page has a box and a results list that links out to each page.
 - **Test seam:** `BookmarkRepository.Search` runs against the real test DB with seeded chunks and hand-made embeddings. An exact-keyword match must rank, and so must a near-vector match.
 - **New types:** `SearchResultDto`, `SearchController`, and the search page and slice in the UI.
-- [ ] done
+- [x] done
 
 ## Out of scope
 - Authentication (single local user).

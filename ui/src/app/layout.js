@@ -11,6 +11,7 @@ export default function RootLayout({ children }) {
         <header className="top">
           <strong>Bookmark Indexer</strong>
           <nav>
+            <Link href="/search">Search</Link>
             <Link href="/bookmarks">Bookmarks</Link>
             <Link href="/import">Import</Link>
           </nav>

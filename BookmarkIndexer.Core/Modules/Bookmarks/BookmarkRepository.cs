@@ -1,7 +1,9 @@
 using BookmarkIndexer.Core.Model;
 using BookmarkIndexer.Core.Model.Bookmarks;
 using BookmarkIndexer.Shared.Types.Bookmarks;
+using BookmarkIndexer.Shared.Types.Search;
 using Microsoft.EntityFrameworkCore;
+using Pgvector;
 
 namespace BookmarkIndexer.Core.Modules.Bookmarks;
 
@@ -11,6 +13,7 @@ public interface IBookmarkRepository
     Task<Bookmark?> GetNextPendingOrNull(CancellationToken ct);
     Task<(List<BookmarkDto> Items, int Total)> ListByStatus(IndexStatus? status, int skip, int take);
     Task<Dictionary<IndexStatus, int>> CountByStatus();
+    Task<List<SearchResultDto>> Search(string query, Vector queryEmbedding, int limit);
 }
 
 public class BookmarkRepository(AppDbContext db) : IBookmarkRepository
@@ -50,5 +53,43 @@ public class BookmarkRepository(AppDbContext db) : IBookmarkRepository
             .GroupBy(b => b.Status)
             .Select(g => new { Status = g.Key, Count = g.Count() })
             .ToDictionaryAsync(g => g.Status, g => g.Count);
+    }
+
+    /// <summary>
+    /// Hybrid search: the 50 chunks nearest to the query embedding and the 50 best full-text matches are merged
+    /// with reciprocal rank fusion (k = 60), so neither score scale needs normalising. Each bookmark is ranked by its best chunk.
+    /// </summary>
+    public async Task<List<SearchResultDto>> Search(string query, Vector queryEmbedding, int limit)
+    {
+        return await db.Database.SqlQuery<SearchResultDto>($"""
+            WITH vector_hits AS (
+                SELECT c."Id", row_number() OVER (ORDER BY c."Embedding" <=> {queryEmbedding}) AS rank
+                FROM "Chunks" c
+                ORDER BY c."Embedding" <=> {queryEmbedding}
+                LIMIT 50
+            ),
+            text_hits AS (
+                SELECT c."Id", row_number() OVER (ORDER BY ts_rank(c."SearchVector", q) DESC) AS rank
+                FROM "Chunks" c, websearch_to_tsquery('english', {query}) q
+                WHERE c."SearchVector" @@ q
+                ORDER BY ts_rank(c."SearchVector", q) DESC
+                LIMIT 50
+            ),
+            fused AS (
+                SELECT COALESCE(v."Id", t."Id") AS chunk_id,
+                       COALESCE(1.0 / (60 + v.rank), 0) + COALESCE(1.0 / (60 + t.rank), 0) AS score
+                FROM vector_hits v FULL OUTER JOIN text_hits t ON v."Id" = t."Id"
+            ),
+            best_per_bookmark AS (
+                SELECT DISTINCT ON (c."BookmarkId") c."BookmarkId", c."Text", f.score
+                FROM fused f JOIN "Chunks" c ON c."Id" = f.chunk_id
+                ORDER BY c."BookmarkId", f.score DESC
+            )
+            SELECT b."Id" AS "BookmarkId", b."Url", b."Title", b."FolderPath",
+                   left(best."Text", 300) AS "Snippet", best.score::float8 AS "Score"
+            FROM best_per_bookmark best JOIN "Bookmarks" b ON b."Id" = best."BookmarkId"
+            ORDER BY best.score DESC, b."Id"
+            LIMIT {limit}
+            """).ToListAsync();
     }
 }

@@ -7,6 +7,7 @@ namespace BookmarkIndexer.Core.Modules.Bookmarks;
 
 public interface IBookmarkRepository
 {
+    Task<Bookmark?> GetByIdOrNull(int id);
     Task<Bookmark?> GetNextPendingOrNull(CancellationToken ct);
     Task<(List<BookmarkDto> Items, int Total)> ListByStatus(IndexStatus? status, int skip, int take);
     Task<Dictionary<IndexStatus, int>> CountByStatus();
@@ -14,6 +15,11 @@ public interface IBookmarkRepository
 
 public class BookmarkRepository(AppDbContext db) : IBookmarkRepository
 {
+    public async Task<Bookmark?> GetByIdOrNull(int id)
+    {
+        return await db.Bookmarks.FirstOrDefaultAsync(b => b.Id == id);
+    }
+
     // Oldest first, so bookmarks are indexed in the order they were imported.
     public async Task<Bookmark?> GetNextPendingOrNull(CancellationToken ct)
     {

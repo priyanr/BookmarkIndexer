@@ -5,6 +5,18 @@ export const fetchBookmarks = createAsyncThunk('bookmarks/fetch', ({ status, pag
 export const fetchCounts = createAsyncThunk('bookmarks/fetchCounts', () => api.getBookmarkCounts());
 export const importFile = createAsyncThunk('bookmarks/import', (file) => api.importBookmarks(file));
 
+// After a retry the list and counts are stale, so both are reloaded for the page being viewed.
+export const retryBookmark = createAsyncThunk('bookmarks/retry', async ({ id, status, page }, { dispatch }) => {
+  await api.retryBookmark(id);
+  dispatch(fetchBookmarks({ status, page }));
+  dispatch(fetchCounts());
+});
+export const retryFailed = createAsyncThunk('bookmarks/retryFailed', async ({ status, page }, { dispatch }) => {
+  await api.retryFailedBookmarks();
+  dispatch(fetchBookmarks({ status, page }));
+  dispatch(fetchCounts());
+});
+
 const bookmarksSlice = createSlice({
   name: 'bookmarks',
   initialState: {
@@ -46,6 +58,12 @@ const bookmarksSlice = createSlice({
       .addCase(importFile.rejected, (state, action) => {
         state.importing = false;
         state.importError = action.error.message;
+      })
+      .addCase(retryBookmark.rejected, (state, action) => {
+        state.error = action.error.message;
+      })
+      .addCase(retryFailed.rejected, (state, action) => {
+        state.error = action.error.message;
       });
   },
 });

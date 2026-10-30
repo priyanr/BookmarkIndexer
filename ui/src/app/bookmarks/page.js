@@ -4,7 +4,7 @@ import { Suspense, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchBookmarks, fetchCounts } from '@/store/bookmarksSlice';
+import { fetchBookmarks, fetchCounts, retryBookmark, retryFailed } from '@/store/bookmarksSlice';
 
 const tabs = [
   { status: '', label: 'All', count: 'all' },
@@ -58,6 +58,11 @@ function Bookmarks() {
           </Link>
         ))}
       </nav>
+      {status === 'Failed' && counts.failed > 0 && (
+        <div className="row">
+          <button onClick={() => dispatch(retryFailed({ status, page }))}>Retry all {counts.failed} failed</button>
+        </div>
+      )}
       {error && <p className="error">{error}</p>}
       {loading && list.items.length === 0 && <p>Loading…</p>}
       <table className="list">
@@ -78,7 +83,12 @@ function Bookmarks() {
                 {b.error && <div className="error">{b.error}</div>}
               </td>
               <td>{b.folderPath}</td>
-              <td><span className={`status ${b.status.toLowerCase()}`}>{b.status}</span></td>
+              <td>
+                <span className={`status ${b.status.toLowerCase()}`}>{b.status}</span>
+                {b.status === 'Failed' && (
+                  <button className="link" onClick={() => dispatch(retryBookmark({ id: b.id, status, page }))}>Retry</button>
+                )}
+              </td>
               <td>{b.addedAt ? new Date(b.addedAt).toLocaleDateString() : ''}</td>
             </tr>
           ))}

@@ -14,4 +14,5 @@ public class Bookmark
     public string? Content { get; set; }
     public int Attempts { get; set; }
     public DateTimeOffset? IndexedAt { get; set; }
+    public List<BookmarkChunk> Chunks { get; set; } = [];
 }

@@ -20,4 +20,18 @@ public class BookmarksController(BookmarkService bookmarks) : ControllerBase
     {
         return await bookmarks.Counts();
     }
+
+    [HttpPost("{id}/retry")]
+    public async Task<IActionResult> Retry(int id)
+    {
+        await bookmarks.Retry(id);
+        return NoContent();
+    }
+
+    [HttpPost("retry-failed")]
+    public async Task<IActionResult> RetryFailed()
+    {
+        await bookmarks.RetryFailed();
+        return NoContent();
+    }
 }

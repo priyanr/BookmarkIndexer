@@ -1,14 +1,26 @@
 using BookmarkIndexer.Core.Model;
+using BookmarkIndexer.Core.Model.Bookmarks;
 using BookmarkIndexer.Core.Modules.Bookmarks;
 using BookmarkIndexer.Shared;
 using BookmarkIndexer.Shared.Types.Bookmarks;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
+using Pgvector;
 using SmartReader;
 
 namespace BookmarkIndexer.Core.Modules.Indexing;
 
-public class IndexService(AppDbContext db, IBookmarkRepository bookmarks, IPageFetcher fetcher, TimeProvider time, ILogger<IndexService> logger)
+public class IndexService(
+    AppDbContext db,
+    IBookmarkRepository bookmarks,
+    IPageFetcher fetcher,
+    IEmbeddingGenerator<string, Embedding<float>> embedder,
+    TimeProvider time,
+    ILogger<IndexService> logger)
 {
+    // nomic-embed-text is trained with task prefixes; documents and queries must use the matching one.
+    public const string DocumentPrefix = "search_document: ";
+
     /// <summary>Indexes the next Pending bookmark. Returns false when there was nothing to do.</summary>
     public async Task<bool> IndexNext(CancellationToken ct)
     {
@@ -30,6 +42,10 @@ public class IndexService(AppDbContext db, IBookmarkRepository bookmarks, IPageF
             }
             else
             {
+                var chunks = TextChunks.Split(text);
+                var embeddings = await embedder.GenerateAsync(chunks.Select(c => DocumentPrefix + c), cancellationToken: ct);
+                bookmark.Chunks.AddRange(chunks.Select((chunkText, i) =>
+                    new BookmarkChunk { Position = i, Text = chunkText, Embedding = new Vector(embeddings[i].Vector) }));
                 bookmark.Content = text;
                 bookmark.Status = IndexStatus.Indexed;
                 bookmark.IndexedAt = time.GetUtcNow();

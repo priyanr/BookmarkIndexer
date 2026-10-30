@@ -19,3 +19,4 @@ h1 { font-size: 1.4rem; }
 .status.pending { background: #fff8c5; }
 .status.indexed { background: #dafbe1; }
 .status.failed { background: #ffebe9; }
+.link { background: none; border: none; color: #0969da; cursor: pointer; margin-left: 0.5rem; padding: 0; }

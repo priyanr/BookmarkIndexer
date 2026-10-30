@@ -16,7 +16,7 @@ public static class TestDatabase
 
     public static async Task<AppDbContext> CreateEmpty()
     {
-        var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(ConnectionString).Options);
+        var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(ConnectionString, npgsql => npgsql.UseVector()).Options);
         await Migrated.WaitAsync();
         try
         {

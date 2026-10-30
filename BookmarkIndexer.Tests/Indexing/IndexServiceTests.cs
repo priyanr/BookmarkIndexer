@@ -5,6 +5,7 @@ using BookmarkIndexer.Core.Modules.Indexing;
 using BookmarkIndexer.Shared;
 using BookmarkIndexer.Shared.Types.Bookmarks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using Xunit;
@@ -49,6 +50,39 @@ public class IndexServiceTests
     }
 
     [Fact]
+    public async Task Stores_each_chunk_with_its_document_embedding()
+    {
+        await using var db = await TestDatabase.CreateEmpty();
+        Seed(db, "https://article.example/");
+        await db.SaveChangesAsync();
+        var embedder = new FakeEmbeddingGenerator(_ => Vector(0.25f));
+
+        await Service(db, new FakePageFetcher(_ => ArticleHtml), embedder).IndexNext(CancellationToken.None);
+
+        var chunk = Assert.Single(await db.Chunks.AsNoTracking().ToListAsync());
+        Assert.Equal(0, chunk.Position);
+        Assert.Contains("Reciprocal rank fusion merges the two result lists", chunk.Text);
+        Assert.Equal(Vector(0.25f), chunk.Embedding.ToArray());
+        // nomic-embed-text expects documents and queries to be prefixed with their task.
+        Assert.Equal(["search_document: " + chunk.Text], embedder.Inputs);
+    }
+
+    [Fact]
+    public async Task A_failed_embedding_marks_the_bookmark_failed_and_stores_no_chunks()
+    {
+        await using var db = await TestDatabase.CreateEmpty();
+        Seed(db, "https://article.example/");
+        await db.SaveChangesAsync();
+        var embedder = new FakeEmbeddingGenerator(_ => throw new HttpRequestException("Connection refused (localhost:11434)"));
+
+        await Service(db, new FakePageFetcher(_ => ArticleHtml), embedder).IndexNext(CancellationToken.None);
+
+        var bookmark = await db.Bookmarks.AsNoTracking().SingleAsync();
+        Assert.Equal((IndexStatus.Failed, "Connection refused (localhost:11434)"), (bookmark.Status, bookmark.Error));
+        Assert.Empty(await db.Chunks.ToListAsync());
+    }
+
+    [Fact]
     public async Task A_page_that_fails_to_load_is_marked_failed_with_the_reason()
     {
         await using var db = await TestDatabase.CreateEmpty();
@@ -87,9 +121,17 @@ public class IndexServiceTests
         Assert.Empty(fetcher.FetchedUrls);
     }
 
-    static IndexService Service(AppDbContext db, IPageFetcher fetcher)
+    static IndexService Service(AppDbContext db, IPageFetcher fetcher, FakeEmbeddingGenerator? embedder = null)
     {
-        return new IndexService(db, new BookmarkRepository(db), fetcher, new FakeTimeProvider(Now), NullLogger<IndexService>.Instance);
+        embedder ??= new FakeEmbeddingGenerator(_ => Vector(1f));
+        return new IndexService(db, new BookmarkRepository(db), fetcher, embedder, new FakeTimeProvider(Now), NullLogger<IndexService>.Instance);
+    }
+
+    static float[] Vector(float first)
+    {
+        var vector = new float[768];
+        vector[0] = first;
+        return vector;
     }
 
     static void Seed(AppDbContext db, params string[] urls)
@@ -108,6 +150,27 @@ public class IndexServiceTests
         {
             FetchedUrls.Add(url);
             return Task.FromResult(html(url));
+        }
+    }
+
+    sealed class FakeEmbeddingGenerator(Func<string, float[]> embed) : IEmbeddingGenerator<string, Embedding<float>>
+    {
+        public List<string> Inputs { get; } = [];
+
+        public Task<GeneratedEmbeddings<Embedding<float>>> GenerateAsync(IEnumerable<string> values, EmbeddingGenerationOptions? options = null, CancellationToken cancellationToken = default)
+        {
+            var inputs = values.ToList();
+            Inputs.AddRange(inputs);
+            return Task.FromResult(new GeneratedEmbeddings<Embedding<float>>(inputs.Select(v => new Embedding<float>(embed(v)))));
+        }
+
+        public object? GetService(Type serviceType, object? serviceKey = null)
+        {
+            return null;
+        }
+
+        public void Dispose()
+        {
         }
     }
 }

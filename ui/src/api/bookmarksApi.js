@@ -26,3 +26,11 @@ export function getBookmarks(status, page) {
 export function getBookmarkCounts() {
   return send('/api/bookmarks/counts');
 }
+
+export function retryBookmark(id) {
+  return send(`/api/bookmarks/${id}/retry`, { method: 'POST' });
+}
+
+export function retryFailedBookmarks() {
+  return send('/api/bookmarks/retry-failed', { method: 'POST' });
+}

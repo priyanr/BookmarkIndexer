@@ -89,7 +89,7 @@ First step of execution: copy this plan to `docs/plans/bookmark-indexer.md` (wor
   - `POST /api/bookmarks/{id}/retry` and `POST /api/bookmarks/retry-failed` reset bookmarks to Pending. The UI has Retry buttons.
 - **Test seam:** chunking is a pure static rule test. `IndexService` gets a fake `IEmbeddingGenerator`. The retry service runs against the real test DB.
 - **New types:** `BookmarkChunk` entity and `TextChunks` (a static chunking rule with tests).
-- [ ] done
+- [x] done
 
 ### Stage 3: Hybrid search
 - **Behaviour:** `GET /api/search?q=` embeds the query. One SQL query takes the top 50 chunks by vector similarity and the top 50 by `ts_rank` (`websearch_to_tsquery`), merges them with RRF (k = 60) and groups them by bookmark. It returns the top 20 as `SearchResultDto(bookmarkId, url, title, folderPath, snippet, score)`. The Search page has a box and a results list that links out to each page.

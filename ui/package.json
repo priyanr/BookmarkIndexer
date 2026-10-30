@@ -1,0 +1,16 @@
+{
+  "name": "bookmarkindexer-ui",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000"
+  },
+  "dependencies": {
+    "@reduxjs/toolkit": "2.13.0",
+    "next": "16.4.3",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "react-redux": "9.3.1"
+  }
+}

@@ -33,6 +33,11 @@ Never log: page contents.
 
 Before writing something new, copy the shape of the closest example:
 
+- Endpoint: `Web/Controllers/ImportsController.cs` + `Core/Modules/Imports/ImportService.cs`
+- Business error to HTTP 400: throw `BadRequestException` (Shared); `Program.cs` maps it.
+- Service test with a real database: `Tests/Imports/ImportServiceTests.cs` using `TestDatabase.CreateEmpty()`
+- UI call: a function in `ui/src/api/*.js` → a `createAsyncThunk` in `ui/src/store/*Slice.js` → `useDispatch` in the page
+
 ## Exceptions to the rules
 
 - Service and repository tests use the local Postgres container (database `bookmarkindexer_test`) instead of SQLite, because pgvector and tsvector need real Postgres.

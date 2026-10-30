@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <PackageVersion Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="3.3.4" />
+    <PackageVersion Include="AngleSharp" Version="1.8.6" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.3" />
     <PackageVersion Include="Serilog.AspNetCore" Version="9.0.0" />

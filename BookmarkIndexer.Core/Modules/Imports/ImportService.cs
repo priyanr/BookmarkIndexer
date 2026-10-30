@@ -1,0 +1,47 @@
+using BookmarkIndexer.Core.Model;
+using BookmarkIndexer.Core.Model.Bookmarks;
+using BookmarkIndexer.Shared;
+using BookmarkIndexer.Shared.Exceptions;
+using BookmarkIndexer.Shared.Types.Bookmarks;
+using BookmarkIndexer.Shared.Types.Imports;
+using Microsoft.EntityFrameworkCore;
+
+namespace BookmarkIndexer.Core.Modules.Imports;
+
+public class ImportService(AppDbContext db, IBookmarkImporter importer)
+{
+    public async Task<ImportResultDto> Import(string content)
+    {
+        var imported = importer.Read(content);
+        if (imported.Count == 0)
+        {
+            throw new BadRequestException("The file contains no http(s) bookmarks. Export bookmarks from Firefox as HTML.");
+        }
+
+        var urls = imported.Select(b => b.Url).ToList();
+        var existing = await db.Bookmarks.Where(b => urls.Contains(b.Url)).ToDictionaryAsync(b => b.Url);
+
+        int added = 0, updated = 0, skipped = 0;
+        foreach (var item in imported)
+        {
+            if (!existing.TryGetValue(item.Url, out var bookmark))
+            {
+                db.Bookmarks.Add(new Bookmark { Url = item.Url, Title = item.Title, FolderPath = item.FolderPath, AddedAt = item.AddedAt, Status = IndexStatus.Pending });
+                added++;
+                continue;
+            }
+            // An existing URL keeps its content and index status; only its title and folder follow the newer export.
+            if (bookmark.Title == item.Title && bookmark.FolderPath == item.FolderPath)
+            {
+                skipped++;
+                continue;
+            }
+            bookmark.Title = item.Title;
+            bookmark.FolderPath = item.FolderPath;
+            updated++;
+        }
+
+        await db.SaveChangesAsync();
+        return new ImportResultDto(added, updated, skipped);
+    }
+}

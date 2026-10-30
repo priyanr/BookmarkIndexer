@@ -65,11 +65,12 @@ First step of execution: copy this plan to `docs/plans/bookmark-indexer.md` (wor
   - `ImportService` uses the real test DB and checks that re-import only adds new URLs.
 - **New types:**
   - Entities: `Bookmark`. Enum: `IndexStatus`. Interface: `IBookmarkImporter` (the swap point for export formats). Class: `FirefoxHtmlBookmarkImporter`.
-  - Services and repository: `ImportService`, `BookmarkService` (list and counts), `IBookmarkRepository` / `BookmarkRepository`.
+  - Services: `ImportService`, `BookmarkService` (list and counts). No repository yet: both queries have one caller, so they stay inline (coding guideline). `IBookmarkRepository` arrives with the first aggregate load in Stage 2.
+  - `BadRequestException` (Shared): input errors become HTTP 400 with the message, mapped once in `Program.cs`.
   - Controllers: `ImportsController`, `BookmarksController`.
   - DTOs: `ImportedBookmarkDto` (importer output), `ImportResultDto`, `BookmarkDto`, `BookmarkCountsDto`, `PagedResultDto<T>`.
   - UI: `bookmarksApi.js`, `bookmarksSlice.js` and the import and bookmarks pages.
-- [ ] done
+- [x] done
 
 ### Stage 2: Index worker (fetch, extract, chunk, embed)
 - **Behaviour:**

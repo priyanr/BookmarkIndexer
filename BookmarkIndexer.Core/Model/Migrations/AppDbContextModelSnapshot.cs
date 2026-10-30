@@ -36,6 +36,9 @@ namespace BookmarkIndexer.Core.Model.Migrations
                     b.Property<int>("Attempts")
                         .HasColumnType("integer");
 
+                    b.Property<string>("Content")
+                        .HasColumnType("text");
+
                     b.Property<string>("Error")
                         .HasColumnType("text");
 

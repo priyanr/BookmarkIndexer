@@ -40,6 +40,9 @@ dotnet_diagnostic.IDE0060.severity = warning
 # "Shared" is a VB keyword, so CA1716 rejects the AppName.Shared namespace. VB interop doesn't matter here.
 dotnet_diagnostic.CA1716.severity = none
 
+# LoggerMessage delegates are a hot-path optimisation; this app logs a few lines per bookmark, so plain ILogger calls stay.
+dotnet_diagnostic.CA1848.severity = none
+
 [**/Model/Migrations/*.cs]
 # Written by `dotnet ef migrations add`; style rules would make every new migration fail the build.
 generated_code = true

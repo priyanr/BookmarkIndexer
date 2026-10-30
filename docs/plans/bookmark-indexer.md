@@ -72,18 +72,23 @@ First step of execution: copy this plan to `docs/plans/bookmark-indexer.md` (wor
   - UI: `bookmarksApi.js`, `bookmarksSlice.js` and the import and bookmarks pages.
 - [x] done
 
-### Stage 2: Index worker (fetch, extract, chunk, embed)
+### Stage 2a: Index worker (fetch and extract)
 - **Behaviour:**
-  - `IndexWorker` (a BackgroundService that honours its cancellation token) loops through `IndexService.IndexNext()`. That method takes the oldest Pending bookmark and fetches its HTML through `IPageFetcher`, with a 30 s timeout.
-  - The text is extracted with SmartReader and split into chunks of about 1,000 characters with 150 characters of overlap. Each chunk is embedded, then the chunks are saved and the bookmark is marked Indexed.
-  - On error the bookmark is marked Failed, with the message stored and Attempts incremented.
+  - `IndexWorker` (a BackgroundService that honours its cancellation token) loops through `IndexService.IndexNext()`. That method takes the oldest Pending bookmark and fetches its HTML through `IPageFetcher` (Lightpanda over CDP), with a 30 s timeout.
+  - The readable text is extracted with SmartReader and stored on the bookmark (`Content`), which is then marked Indexed. Stage 2b chunks it from there, so changing the chunking never needs a refetch.
+  - On error, or when the page has no readable text, the bookmark is marked Failed with the message. Attempts counts every try.
   - When nothing is Pending, the worker waits 10 s before checking again.
-  - `POST /api/bookmarks/{id}/retry` and `POST /api/bookmarks/retry-failed` reset bookmarks to Pending. The UI has Retry buttons and refreshes its counts.
-- **Test seam:**
-  - Chunking is a pure static rule test.
-  - `IndexService` uses a fake `IPageFetcher` and a fake `IEmbeddingGenerator` against the real test DB, covering both success and failure.
-  - `LightpandaPageFetcher` gets a manual smoke test only.
-- **New types:** `BookmarkChunk` entity, `IPageFetcher` (the browser swap point), `LightpandaPageFetcher`, `IndexService`, `IndexWorker`, `TextChunks` (a static chunking rule with tests).
+  - The Bookmarks page refreshes every 5 s, so progress is visible.
+- **Test seam:** `IndexService` uses a fake `IPageFetcher` and `FakeTimeProvider` against the real test DB, covering success, fetch failure, an unreadable page and nothing Pending. `LightpandaPageFetcher` gets a manual smoke test.
+- **New types:** `IPageFetcher` (the browser swap point), `LightpandaPageFetcher`, `IndexService`, `IndexWorker`, and `IBookmarkRepository`/`BookmarkRepository` (`GetNextPending` is the first aggregate load).
+- [x] done
+
+### Stage 2b: Chunks, embeddings and Retry
+- **Behaviour:**
+  - Indexing splits `Content` into chunks of about 1,000 characters with 150 characters of overlap, embeds them with Ollama and saves them as `BookmarkChunk`s (pgvector).
+  - `POST /api/bookmarks/{id}/retry` and `POST /api/bookmarks/retry-failed` reset bookmarks to Pending. The UI has Retry buttons.
+- **Test seam:** chunking is a pure static rule test. `IndexService` gets a fake `IEmbeddingGenerator`. The retry service runs against the real test DB.
+- **New types:** `BookmarkChunk` entity and `TextChunks` (a static chunking rule with tests).
 - [ ] done
 
 ### Stage 3: Hybrid search

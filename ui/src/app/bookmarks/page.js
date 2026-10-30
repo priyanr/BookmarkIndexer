@@ -30,9 +30,15 @@ function Bookmarks() {
   const { list, counts, loading, error } = useSelector((state) => state.bookmarks);
   const pageCount = Math.max(1, Math.ceil(list.total / list.pageSize));
 
+  // The worker indexes in the background, so the page refreshes to show progress.
   useEffect(() => {
-    dispatch(fetchBookmarks({ status, page }));
-    dispatch(fetchCounts());
+    function load() {
+      dispatch(fetchBookmarks({ status, page }));
+      dispatch(fetchCounts());
+    }
+    load();
+    const timer = setInterval(load, 5000);
+    return () => clearInterval(timer);
   }, [dispatch, status, page]);
 
   function href(nextStatus, nextPage) {
@@ -53,7 +59,7 @@ function Bookmarks() {
         ))}
       </nav>
       {error && <p className="error">{error}</p>}
-      {loading && <p>Loading…</p>}
+      {loading && list.items.length === 0 && <p>Loading…</p>}
       <table className="list">
         <thead>
           <tr>

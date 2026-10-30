@@ -11,6 +11,7 @@ public class Bookmark
     public DateTimeOffset? AddedAt { get; set; }
     public IndexStatus Status { get; set; }
     public string? Error { get; set; }
+    public string? Content { get; set; }
     public int Attempts { get; set; }
     public DateTimeOffset? IndexedAt { get; set; }
 }

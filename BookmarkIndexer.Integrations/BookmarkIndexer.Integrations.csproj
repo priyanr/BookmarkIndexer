@@ -5,6 +5,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Playwright" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\BookmarkIndexer.Shared\BookmarkIndexer.Shared.csproj" />
   </ItemGroup>
 

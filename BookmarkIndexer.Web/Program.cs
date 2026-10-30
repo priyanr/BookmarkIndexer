@@ -1,7 +1,10 @@
-using BookmarkIndexer.Core;
 using System.Text.Json.Serialization;
+using BookmarkIndexer.Core;
 using BookmarkIndexer.Core.Model;
+using BookmarkIndexer.Integrations.Lightpanda;
+using BookmarkIndexer.Shared;
 using BookmarkIndexer.Shared.Exceptions;
+using BookmarkIndexer.Web.Workers;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
@@ -13,6 +16,9 @@ builder.Services.AddSerilog((services, logger) => logger
     .ReadFrom.Services(services));
 
 builder.Services.AddCore(builder.Configuration);
+builder.Services.AddSingleton<IPageFetcher>(new LightpandaPageFetcher(
+    builder.Configuration["Lightpanda:CdpUrl"] ?? throw new InvalidOperationException("Lightpanda:CdpUrl is not configured.")));
+builder.Services.AddHostedService<IndexWorker>();
 builder.Services.AddControllers()
     .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>

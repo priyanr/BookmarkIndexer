@@ -15,7 +15,7 @@ public static class TestDatabase
 
     public static async Task<AppDbContext> CreateEmpty()
     {
-        var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(ConnectionString, npgsql => npgsql.UseVector()).Options);
+        var db = Connect();
         if (!isMigrated)
         {
             await db.Database.EnsureDeletedAsync();
@@ -24,5 +24,11 @@ public static class TestDatabase
         }
         await db.Database.ExecuteSqlRawAsync("""TRUNCATE "Bookmarks" RESTART IDENTITY CASCADE""");
         return db;
+    }
+
+    /// <summary>Another connection to the same data, for tests where two workers run at once. Call CreateEmpty first.</summary>
+    public static AppDbContext Connect()
+    {
+        return new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(ConnectionString, npgsql => npgsql.UseVector()).Options);
     }
 }

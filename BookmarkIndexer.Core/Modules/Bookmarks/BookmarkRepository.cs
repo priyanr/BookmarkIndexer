@@ -10,7 +10,7 @@ namespace BookmarkIndexer.Core.Modules.Bookmarks;
 public interface IBookmarkRepository
 {
     Task<Bookmark?> GetByIdOrNull(int id);
-    Task<Bookmark?> GetNextPendingOrNull(CancellationToken ct);
+    Task<Bookmark?> LockNextPendingOrNull(CancellationToken ct);
     Task<(List<BookmarkDto> Items, int Total)> ListByStatus(IndexStatus? status, int skip, int take);
     Task<Dictionary<IndexStatus, int>> CountByStatus();
     Task<List<SearchResultDto>> Search(string query, Vector queryEmbedding, int limit);
@@ -24,9 +24,14 @@ public class BookmarkRepository(AppDbContext db) : IBookmarkRepository
     }
 
     // Oldest first, so bookmarks are indexed in the order they were imported. Chunks are included because indexing replaces them.
-    public async Task<Bookmark?> GetNextPendingOrNull(CancellationToken ct)
+    // Several index loops run at once: the row stays locked until the caller's transaction ends, and SKIP LOCKED lets
+    // the other loops take the next bookmark instead of waiting. Call it inside a transaction.
+    public async Task<Bookmark?> LockNextPendingOrNull(CancellationToken ct)
     {
-        return await db.Bookmarks.Include(b => b.Chunks).Where(b => b.Status == IndexStatus.Pending).OrderBy(b => b.Id).FirstOrDefaultAsync(ct);
+        return await db.Bookmarks
+            .FromSql($"""SELECT * FROM "Bookmarks" WHERE "Status" = 'Pending' ORDER BY "Id" LIMIT 1 FOR UPDATE SKIP LOCKED""")
+            .Include(b => b.Chunks)
+            .FirstOrDefaultAsync(ct);
     }
 
     /// <summary>Newest bookmarks first; a null status lists every bookmark.</summary>

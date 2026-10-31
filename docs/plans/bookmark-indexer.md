@@ -121,10 +121,20 @@ Where each review finding is prevented next time:
 - Children changed without an `Include`: `rules-review` skill check.
 - [x] done
 
+### Stage 4: Index 4 bookmarks at a time
+A speed test (16 public pages, 2026-10-31) showed that loading pages takes most of the indexing time and mostly waits on the network: 4 at a time took 14 s against 31–35 s one at a time. Embedding gained nothing (Ollama handles one request at a time), and Lightpanda handled 4 connections without errors.
+- **Affected existing features:** the index worker. Up to 4 bookmarks are indexed at once instead of one, still oldest first. While a Pending bookmark is being indexed, a re-import that updates its title waits until that bookmark is done (up to about 40 s).
+- **Behaviour:** `IndexWorker` runs 4 loops. Each `IndexNext` runs in a transaction and claims the oldest Pending bookmark nobody else holds (`FOR UPDATE SKIP LOCKED`), so two loops never index the same bookmark. If the API stops mid-index, the transaction rolls back and the bookmark stays Pending; no new status is needed.
+- **Test seam:** `IndexService` against the real test DB with two `DbContext`s: while one `IndexNext` hangs on its fetch, a second one indexes the next bookmark; when the first is cancelled, its bookmark is still Pending.
+- **New types:** none.
+- **Files touched:** `IndexService.cs`, `BookmarkRepository.cs` (`GetNextPendingOrNull` becomes `LockNextPendingOrNull`), `IndexWorker.cs`, `IndexServiceTests.cs`, `TestDatabase.cs` (a second connection without wiping the tables), docs.
+- **Result:** on the real bookmarks, about 30 bookmarks a minute became Indexed, against about 7 one at a time.
+- [x] done
+
 ## Out of scope
 - Authentication (single local user).
 - Other export formats, a Playwright fetcher and other embedding APIs. These are only seams for now.
-- Parallel fetching, scheduled re-indexing, deleting bookmarks, and import history.
+- Scheduled re-indexing, deleting bookmarks, and import history.
 
 ## Verification
 - `dotnet build -warnaserror` and `dotnet test` stay green each stage (enforced by the Stop hook).

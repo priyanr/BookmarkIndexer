@@ -24,14 +24,16 @@ public class IndexService(
     /// <summary>Indexes the next Pending bookmark. Returns false when there was nothing to do.</summary>
     public async Task<bool> IndexNext(CancellationToken ct)
     {
-        var bookmark = await bookmarks.GetNextPendingOrNull(ct);
+        // The lock on the bookmark lasts until the commit. If indexing is cancelled the rollback leaves it Pending.
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        var bookmark = await bookmarks.LockNextPendingOrNull(ct);
         if (bookmark == null)
         {
             return false;
         }
 
         bookmark.Attempts++;
-        // One worker indexes everything, so a page that never answers must not hold it up.
+        // A page that never answers must not hold up its index loop.
         using var timeout = new CancellationTokenSource(FetchTimeout, time);
         using var fetchToken = CancellationTokenSource.CreateLinkedTokenSource(ct, timeout.Token);
         try
@@ -67,6 +69,7 @@ public class IndexService(
         }
 
         await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
         return true;
 
         void MarkFailed(string error)

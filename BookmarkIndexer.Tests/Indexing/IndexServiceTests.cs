@@ -126,6 +126,30 @@ public class IndexServiceTests
         Assert.Equal((IndexStatus.Failed, "The page did not load within 30 seconds."), (bookmark.Status, bookmark.Error));
     }
 
+    // The worker runs several loops at once; each must claim a different bookmark.
+    [Fact]
+    public async Task Two_workers_index_different_bookmarks_and_a_cancelled_one_stays_pending()
+    {
+        await using var db = await TestDatabase.CreateEmpty();
+        Seed(db, "https://first.example/", "https://second.example/");
+        await db.SaveChangesAsync();
+        await using var firstWorkerDb = TestDatabase.Connect();
+        await using var secondWorkerDb = TestDatabase.Connect();
+        var hanging = new HangingPageFetcher();
+        using var stopFirst = new CancellationTokenSource();
+
+        var first = Service(firstWorkerDb, hanging).IndexNext(stopFirst.Token);
+        await hanging.Started.Task;
+        var fetcher = new FakePageFetcher(_ => ArticleHtml);
+        Assert.True(await Service(secondWorkerDb, fetcher).IndexNext(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(10)));
+        await stopFirst.CancelAsync();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => first);
+
+        Assert.Equal(["https://second.example/"], fetcher.FetchedUrls);
+        var statuses = await db.Bookmarks.AsNoTracking().OrderBy(b => b.Id).Select(b => new { b.Status, b.Attempts }).ToListAsync();
+        Assert.Equal([new { Status = IndexStatus.Pending, Attempts = 0 }, new { Status = IndexStatus.Indexed, Attempts = 1 }], statuses);
+    }
+
     [Fact]
     public async Task Indexing_a_bookmark_again_replaces_its_old_chunks()
     {

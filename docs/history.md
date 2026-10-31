@@ -2,6 +2,13 @@
 
 What changed and which existing features it affected. Newest first.
 
+## 2026-10-31: Index 4 bookmarks at a time
+Plan: `docs/plans/bookmark-indexer.md`, Stage 4.
+
+Affected existing features:
+- **Indexing:** up to 4 bookmarks are indexed at once instead of one, still oldest first: about 30 a minute became Indexed, against about 7 before. A bookmark whose indexing is interrupted (the API stops) stays Pending instead of keeping a half-finished state.
+- **Import:** re-importing a Pending bookmark that is being indexed at that moment waits until it is done (up to about 40 s) before its title and folder are updated.
+
 ## 2026-10-31: Review fixes
 Plan: `docs/plans/bookmark-indexer.md`, section "Review fixes".
 

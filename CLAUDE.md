@@ -1,6 +1,6 @@
 # BookmarkIndexer
 
-Indexes a single user's browser bookmarks. It imports a Firefox bookmarks HTML export, loads each URL in headless Lightpanda, extracts the readable text, embeds it with Ollama and stores it in Postgres (pgvector). A Next.js UI imports bookmarks, lists them by index status and searches them with hybrid vector and full-text search. Plan: `docs/plans/bookmark-indexer.md`.
+Indexes a single user's browser bookmarks. It imports a Firefox bookmarks HTML export, loads each URL in headless Lightpanda, extracts the readable text, embeds it with Ollama and stores it in Postgres (pgvector). A Next.js UI imports bookmarks, lists them by index status and searches them with hybrid vector and full-text search. Plan: `docs/plans/bookmark-indexer.md`. Current state: `docs/status.md`; changes and affected features: `docs/history.md`; known issues left as they are: `docs/issues_accepted.md`.
 
 ## Commands
 

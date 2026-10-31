@@ -108,6 +108,18 @@ From the rules review of the whole feature:
 - UI ignores out-of-date list responses and keeps Retry errors separate from list errors.
 - `build.ps1` starts Postgres for the tests; `run.ps1` fails loudly when Postgres/Ollama aren't ready or the model pull fails, and stops both processes when either exits. Shared container helpers live in `containers.ps1`.
 - `Content` stays: re-chunking or re-indexing without refetching will read it.
+- Accepted, not fixed: extracted text glues neighbouring words together (`docs/issues_accepted.md`).
+- [x] done
+
+## Retro
+Where each review finding is prevented next time:
+- Unchecked native exit codes in scripts: `guard_edits.py` denies `.ps1` edits that don't check `$LASTEXITCODE`.
+- New types missing from the plan: `done_check.py` sends the agent back until each new non-test type is named in a plan.
+- HNSW returning fewer rows than asked: a Data access line in the coding guideline (`ef_search`).
+- Timeout around only part of an external call: `add-integration` skill step and test.
+- Untested validation and stale UI responses: `add-endpoint` skill steps.
+- Children changed without an `Include`: `rules-review` skill check.
+- [x] done
 
 ## Out of scope
 - Authentication (single local user).

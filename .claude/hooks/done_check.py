@@ -6,6 +6,8 @@ When the agent tries to end its turn and C# code has changed:
    so a broken build can't loop forever.
 2. If the change adds more new .cs files than allowed, the agent is sent back once to justify
    each new file (coding guideline: Before you finish) or inline it.
+3. If a new non-test .cs file declares a type that no plan in docs/plans/ names, the agent is sent back
+   to add it to the plan with its reason.
 
 A green result is remembered for the exact working-tree state, so a turn that changes nothing
 doesn't rebuild. Optional settings live in .claude/done-check.json (see README).
@@ -29,6 +31,10 @@ DEFAULTS = {
 
 CODE_FILE = re.compile(r"\.(cs|csproj|props|targets|sln|slnx|razor|cshtml|editorconfig)$|(^|/)BannedSymbols\.txt$")
 COMPILER_ERROR = re.compile(r": (error|warning) [A-Z]+\d+:")
+# Unindented declarations: with file-scoped namespaces these are the top-level types (nested ones are indented).
+TOP_LEVEL_TYPE = re.compile(
+    r"^(?:(?:public|internal|static|sealed|abstract|partial|readonly)\s+)*(?:class|record|interface|enum|struct)\s+(\w+)",
+    re.MULTILINE)
 
 
 def git(project_dir, *args):
@@ -175,6 +181,34 @@ def main():
                 f"For each one, say in one line why it exists. Inline any type whose reason is "
                 f"'separation of concerns', 'future flexibility' or 'best practice', or that has a single caller. "
                 f"If the stage is simply too big, say so and propose a split.\n\n{files}"
+            )
+
+    # 3. New types missing from the plan (workflow guideline: every new type is listed in the plan with its reason)
+    plans_dir = os.path.join(project_dir, "docs", "plans")
+    plans = ""
+    if os.path.isdir(plans_dir):
+        for name in os.listdir(plans_dir):
+            if name.endswith(".md"):
+                with open(os.path.join(plans_dir, name), encoding="utf-8", errors="replace") as f:
+                    plans += f.read()
+    if plans:
+        missing = []
+        for path in new_files:
+            if ".Tests/" in path:
+                continue  # test fixtures and fakes are not planned types
+            try:
+                with open(os.path.join(project_dir, path), encoding="utf-8-sig", errors="replace") as f:
+                    source = f.read()
+            except OSError:
+                continue
+            for name in TOP_LEVEL_TYPE.findall(source):
+                if not re.search(rf"\b{re.escape(name)}\b", plans):
+                    missing.append(f"- {name} ({path})")
+        if missing:
+            return block(
+                "These new types are not named in any plan in docs/plans/. Add each to its stage's 'New types' "
+                "with one line saying why it exists, or inline it if it has no reason tied to the request.\n\n"
+                + "\n".join(missing)
             )
 
     return 0

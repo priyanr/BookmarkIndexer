@@ -123,6 +123,9 @@ Example:
 - No Add/Update/Delete/Save methods on repositories.
 - A query used in only one place may stay inline in the service. Move it to the repository when a
   second caller needs it, or when it's an aggregate load (`GetById*`).
+- An approximate vector index returns at most its search width: pgvector HNSW gives at most `hnsw.ef_search`
+  rows (default 40). A query that takes the top N from it raises `ef_search` to at least N with `SET LOCAL`
+  inside a transaction, and has a test that forces the index (`SET enable_seqscan = off`) and expects N rows.
 
 Example:
     public interface IOrderRepository

@@ -30,12 +30,14 @@ The interface speaks the app's language (`SubmitClaim(ClaimSubmissionDto)`), not
 ## 3. Test first
 
 - Client: a fake `HttpMessageHandler` that returns the sample response. Assert the request the client sends (URL, headers, body) and the DTO it returns, including the provider's error responses.
+- Timeout: a fake that never answers must fail with a clear message once the timeout passes (drive it with `FakeTimeProvider`), and must not hang the test.
 - Code that uses the client: fake the boundary interface.
 - No interface around `HttpClient`. Use a typed client.
 
 ## 4. Implement
 
 - Use `HttpClient` through a typed client, `ILogger<T>`, `IOptions<T>` and `TimeProvider` directly. No wrappers, no base client class.
+- Every call has a timeout that covers all of it (connect, request, reading the response), not only the first step. A library's per-step timeout (e.g. a navigation timeout) doesn't count: wrap the whole call with `WaitAsync` or a `CancellationTokenSource` built on `TimeProvider`, and report a timeout with a message that says so.
 - No retries, caching or queues unless the plan names the need. If the provider documents rate limits or retry rules, say so and ask.
 - Credentials come from configuration, never from code or test files.
 - Don't log request or response bodies that contain personal or medical data. Log the correlation id, status code and timing.

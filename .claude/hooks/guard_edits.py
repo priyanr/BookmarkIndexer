@@ -3,6 +3,7 @@
 - Banned libraries in C# code (MediatR, AutoMapper, FluentValidation) are denied.
 - New packages, new projects, project-file edits and edits to the gates themselves need my approval.
 - New files named like enterprise ceremony (*Factory, *Manager, *Helper, ...) need my approval.
+- PowerShell scripts that run a native command without checking $LASTEXITCODE are denied.
 
 Reads the hook JSON from stdin. Prints a permission decision as JSON, or nothing to allow.
 """
@@ -24,6 +25,11 @@ GUARDED_FILES = [
 ]
 
 CEREMONY_NAME = re.compile(r"(^|/)(Base[A-Z]\w*|\w+(Factory|Manager|Helper|Helpers|Wrapper|Provider|Builder|Utils|Utility))\.cs$")
+
+# A native command at the start of a PowerShell line (optionally assigned to a variable). PowerShell doesn't stop
+# when one fails, even with $ErrorActionPreference = 'Stop', so the script must check $LASTEXITCODE.
+NATIVE_COMMAND_LINE = re.compile(r"^\s*(\$\w+\s*=\s*)?(&\s*)?(wslc|docker|dotnet|npm|npx|node|git)(\.exe)?\s", re.IGNORECASE)
+EXIT_CODE_LOOKAHEAD = 4
 
 PACKAGE_COMMANDS = re.compile(
     r"\bdotnet\s+(add\s+\S+\s+package|add\s+package|package\s+add|new\s+(?!tool-manifest)\w+|sln\s+\S*\s*add)"
@@ -51,6 +57,37 @@ def new_text(tool_name, tool_input):
     return ""
 
 
+def file_after_edit(tool_name, tool_input):
+    """The whole file as it will be after this Write or Edit."""
+    if tool_name == "Write":
+        return tool_input.get("content", "")
+    try:
+        with open(tool_input.get("file_path", ""), encoding="utf-8-sig") as f:
+            text = f.read()
+    except OSError:
+        return new_text(tool_name, tool_input)
+    edits = tool_input.get("edits") if tool_name == "MultiEdit" else [tool_input]
+    for edit in edits or []:
+        old, new = edit.get("old_string", ""), edit.get("new_string", "")
+        text = text.replace(old, new) if edit.get("replace_all") else text.replace(old, new, 1)
+    return text
+
+
+def unchecked_native_commands(script):
+    """Lines that run a native command with no $LASTEXITCODE check in the next few lines."""
+    if re.search(r"\$PSNativeCommandUseErrorActionPreference\s*=\s*\$true", script, re.IGNORECASE):
+        return []
+    lines = script.splitlines()
+    unchecked = []
+    for i, line in enumerate(lines):
+        if line.lstrip().startswith("#") or not NATIVE_COMMAND_LINE.search(line):
+            continue
+        following = [l for l in lines[i + 1:] if l.strip()][:EXIT_CODE_LOOKAHEAD]
+        if not any("$LASTEXITCODE" in l for l in [line, *following]):
+            unchecked.append(f"line {i + 1}: {line.strip()}")
+    return unchecked
+
+
 def decide(event, project_dir):
     tool_name = event.get("tool_name", "")
     tool_input = event.get("tool_input", {}) or {}
@@ -68,6 +105,13 @@ def decide(event, project_dir):
 
     if path.endswith(".cs") and BANNED_USINGS.search(new_text(tool_name, tool_input)):
         return "deny", "ClaudeRules: MediatR, AutoMapper and FluentValidation are not used in this codebase. Call services directly, map with a few lines of code, validate inline at the top of the service method."
+
+    if path.lower().endswith(".ps1"):
+        unchecked = unchecked_native_commands(file_after_edit(tool_name, tool_input))
+        if unchecked:
+            return "deny", ("ClaudeRules: these native commands don't check $LASTEXITCODE, so a failure goes unnoticed "
+                            "and the script carries on. Add `if ($LASTEXITCODE -ne 0) { throw '...' }` within "
+                            f"{EXIT_CODE_LOOKAHEAD} lines (or run it through a helper that checks):\n" + "\n".join(unchecked))
 
     for pattern, what in GUARDED_FILES:
         if pattern.search(path):

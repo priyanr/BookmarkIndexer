@@ -40,11 +40,14 @@ Write the failing test at the agreed seam:
 
 Expected values come from the request or a worked example.
 
+Cover every validation branch at the top of the service method (one test per message, including the edges such as whitespace-only and one over the limit), and assert what the service passes on to a boundary (e.g. the trimmed, prefixed text sent to an external API).
+
 ## 3. Implement
 
 - Service method: validation inline at the top with early returns; load what is needed in a few queries before any loop; writes through `DbContext` then `SaveChangesAsync`. Throw the repo's exception types for not-found and rule violations.
 - Controller action: one service call, return the result. No try/catch, no `DbContext`, no mapping beyond a line or two.
 - Mapping between entity and DTO: a few lines in the service or a static method. No mapping class.
+- UI that calls it, if any: a list thunk that can be dispatched again before the last one finishes (polling, switching tab or page) ignores responses from older requests (keep the latest `meta.requestId` and compare). An action's error (save, retry) goes in its own state field, so the next list refresh doesn't clear it before the user sees it.
 
 ## 4. Finish
 

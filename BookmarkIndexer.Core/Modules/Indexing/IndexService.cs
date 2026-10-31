@@ -6,7 +6,6 @@ using BookmarkIndexer.Shared.Types.Bookmarks;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Pgvector;
-using SmartReader;
 
 namespace BookmarkIndexer.Core.Modules.Indexing;
 
@@ -19,7 +18,8 @@ public class IndexService(
     ILogger<IndexService> logger)
 {
     // nomic-embed-text is trained with task prefixes; documents and queries must use the matching one.
-    public const string DocumentPrefix = "search_document: ";
+    const string DocumentPrefix = "search_document: ";
+    static readonly TimeSpan FetchTimeout = TimeSpan.FromSeconds(30);
 
     /// <summary>Indexes the next Pending bookmark. Returns false when there was nothing to do.</summary>
     public async Task<bool> IndexNext(CancellationToken ct)
@@ -31,12 +31,14 @@ public class IndexService(
         }
 
         bookmark.Attempts++;
+        // One worker indexes everything, so a page that never answers must not hold it up.
+        using var timeout = new CancellationTokenSource(FetchTimeout, time);
+        using var fetchToken = CancellationTokenSource.CreateLinkedTokenSource(ct, timeout.Token);
         try
         {
-            var html = await fetcher.FetchHtml(bookmark.Url, ct);
-            // Readability keeps the article and drops navigation, ads and footers, so search matches what the page is about.
-            var text = new Reader(bookmark.Url, html).GetArticle().TextContent?.Trim();
-            if (string.IsNullOrEmpty(text))
+            var html = await fetcher.FetchHtml(bookmark.Url, fetchToken.Token);
+            var text = PageText.Extract(bookmark.Url, html);
+            if (text.Length == 0)
             {
                 MarkFailed("The page has no readable text.");
             }
@@ -44,6 +46,7 @@ public class IndexService(
             {
                 var chunks = TextChunks.Split(text);
                 var embeddings = await embedder.GenerateAsync(chunks.Select(c => DocumentPrefix + c), cancellationToken: ct);
+                bookmark.Chunks.Clear();
                 bookmark.Chunks.AddRange(chunks.Select((chunkText, i) =>
                     new BookmarkChunk { Position = i, Text = chunkText, Embedding = new Vector(embeddings[i].Vector) }));
                 bookmark.Content = text;
@@ -51,6 +54,11 @@ public class IndexService(
                 bookmark.IndexedAt = time.GetUtcNow();
                 bookmark.Error = null;
             }
+        }
+        catch (OperationCanceledException) when (timeout.IsCancellationRequested && !ct.IsCancellationRequested)
+        {
+            logger.LogWarning("Indexing bookmark {BookmarkId} {Url} timed out", bookmark.Id, bookmark.Url);
+            MarkFailed($"The page did not load within {FetchTimeout.TotalSeconds:0} seconds.");
         }
         catch (Exception e) when (!ct.IsCancellationRequested)
         {

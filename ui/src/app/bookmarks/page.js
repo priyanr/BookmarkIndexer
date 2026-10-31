@@ -27,7 +27,7 @@ function Bookmarks() {
   const searchParams = useSearchParams();
   const status = searchParams.get('status') ?? '';
   const page = Number(searchParams.get('page') ?? 1);
-  const { list, counts, loading, error } = useSelector((state) => state.bookmarks);
+  const { list, counts, loading, error, retryError } = useSelector((state) => state.bookmarks);
   const pageCount = Math.max(1, Math.ceil(list.total / list.pageSize));
 
   // The worker indexes in the background, so the page refreshes to show progress.
@@ -64,6 +64,7 @@ function Bookmarks() {
         </div>
       )}
       {error && <p className="error">{error}</p>}
+      {retryError && <p className="error">{retryError}</p>}
       {loading && list.items.length === 0 && <p>Loading…</p>}
       <table className="list">
         <thead>

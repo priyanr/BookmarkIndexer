@@ -23,10 +23,10 @@ public class BookmarkRepository(AppDbContext db) : IBookmarkRepository
         return await db.Bookmarks.FirstOrDefaultAsync(b => b.Id == id);
     }
 
-    // Oldest first, so bookmarks are indexed in the order they were imported.
+    // Oldest first, so bookmarks are indexed in the order they were imported. Chunks are included because indexing replaces them.
     public async Task<Bookmark?> GetNextPendingOrNull(CancellationToken ct)
     {
-        return await db.Bookmarks.Where(b => b.Status == IndexStatus.Pending).OrderBy(b => b.Id).FirstOrDefaultAsync(ct);
+        return await db.Bookmarks.Include(b => b.Chunks).Where(b => b.Status == IndexStatus.Pending).OrderBy(b => b.Id).FirstOrDefaultAsync(ct);
     }
 
     /// <summary>Newest bookmarks first; a null status lists every bookmark.</summary>
@@ -61,7 +61,11 @@ public class BookmarkRepository(AppDbContext db) : IBookmarkRepository
     /// </summary>
     public async Task<List<SearchResultDto>> Search(string query, Vector queryEmbedding, int limit)
     {
-        return await db.Database.SqlQuery<SearchResultDto>($"""
+        // The HNSW index returns at most hnsw.ef_search rows (default 40); it must cover the 50 vector candidates.
+        // SET LOCAL only lasts for the transaction, so the setting doesn't leak into pooled connections.
+        await using var transaction = await db.Database.BeginTransactionAsync();
+        await db.Database.ExecuteSqlRawAsync("SET LOCAL hnsw.ef_search = 100");
+        var results = await db.Database.SqlQuery<SearchResultDto>($"""
             WITH vector_hits AS (
                 SELECT c."Id", row_number() OVER (ORDER BY c."Embedding" <=> {queryEmbedding}) AS rank
                 FROM "Chunks" c
@@ -86,10 +90,13 @@ public class BookmarkRepository(AppDbContext db) : IBookmarkRepository
                 ORDER BY c."BookmarkId", f.score DESC
             )
             SELECT b."Id" AS "BookmarkId", b."Url", b."Title", b."FolderPath",
-                   left(best."Text", 300) AS "Snippet", best.score::float8 AS "Score"
+                   CASE WHEN length(best."Text") > 300 THEN left(best."Text", 300) || '…' ELSE best."Text" END AS "Snippet",
+                   best.score::float8 AS "Score"
             FROM best_per_bookmark best JOIN "Bookmarks" b ON b."Id" = best."BookmarkId"
             ORDER BY best.score DESC, b."Id"
             LIMIT {limit}
             """).ToListAsync();
+        await transaction.CommitAsync();
+        return results;
     }
 }

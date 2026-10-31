@@ -24,7 +24,7 @@ First step of execution: copy this plan to `docs/plans/bookmark-indexer.md` (wor
   - Embeddings use `Microsoft.Extensions.AI`'s `IEmbeddingGenerator<string, Embedding<float>>`, implemented by `OllamaApiClient` from the `OllamaSharp` package. This needs no interface of our own. Moving to OpenAI or another API later is a one-line DI change.
 - **Tests:** The guideline says SQLite in-memory, but pgvector and `tsvector` need real Postgres. Service and repository tests therefore run against a `bookmarkindexer_test` database on the local wslc Postgres, which is migrated and wiped per test class. Docker-based Testcontainers are not used because they don't drive wslc.
 - **New packages (all need your OK, central in Directory.Packages.props):**
-  - API: Npgsql.EntityFrameworkCore.PostgreSQL, Pgvector.EntityFrameworkCore, Microsoft.EntityFrameworkCore.Design, Microsoft.Playwright, SmartReader, OllamaSharp, Microsoft.Extensions.AI.Abstractions, Serilog.AspNetCore, Serilog.Sinks.Seq, Serilog.Sinks.File.
+  - API: AngleSharp (direct reference in Core for the Firefox importer; SmartReader depends on it too), Npgsql.EntityFrameworkCore.PostgreSQL, Pgvector.EntityFrameworkCore, Microsoft.EntityFrameworkCore.Design, Microsoft.Playwright, SmartReader, OllamaSharp, Microsoft.Extensions.AI.Abstractions, Serilog.AspNetCore, Serilog.Sinks.Seq, Serilog.Sinks.File.
   - Tests: xunit, xunit.runner.visualstudio, Microsoft.NET.Test.Sdk, Microsoft.Extensions.TimeProvider.Testing.
   - UI npm: next, react, react-dom, @reduxjs/toolkit, react-redux.
 
@@ -80,7 +80,8 @@ First step of execution: copy this plan to `docs/plans/bookmark-indexer.md` (wor
   - When nothing is Pending, the worker waits 10 s before checking again.
   - The Bookmarks page refreshes every 5 s, so progress is visible.
 - **Test seam:** `IndexService` uses a fake `IPageFetcher` and `FakeTimeProvider` against the real test DB, covering success, fetch failure, an unreadable page and nothing Pending. `LightpandaPageFetcher` gets a manual smoke test.
-- **New types:** `IPageFetcher` (the browser swap point), `LightpandaPageFetcher`, `IndexService`, `IndexWorker`, and `IBookmarkRepository`/`BookmarkRepository` (`GetNextPending` is the first aggregate load).
+- **New types:** `IPageFetcher` (the browser swap point), `LightpandaPageFetcher`, `IndexService`, `IndexWorker`, and `IBookmarkRepository`/`BookmarkRepository` (`GetNextPendingOrNull` is the first aggregate load).
+- **Changed at the user's request:** the List and Counts queries moved from `BookmarkService` into `BookmarkRepository` (`ListByStatus`, `CountByStatus`), with `BookmarkRepositoryTests`.
 - [x] done
 
 ### Stage 2b: Chunks, embeddings and Retry
@@ -88,7 +89,7 @@ First step of execution: copy this plan to `docs/plans/bookmark-indexer.md` (wor
   - Indexing splits `Content` into chunks of about 1,000 characters with 150 characters of overlap, embeds them with Ollama and saves them as `BookmarkChunk`s (pgvector).
   - `POST /api/bookmarks/{id}/retry` and `POST /api/bookmarks/retry-failed` reset bookmarks to Pending. The UI has Retry buttons.
 - **Test seam:** chunking is a pure static rule test. `IndexService` gets a fake `IEmbeddingGenerator`. The retry service runs against the real test DB.
-- **New types:** `BookmarkChunk` entity and `TextChunks` (a static chunking rule with tests).
+- **New types:** `BookmarkChunk` entity, `TextChunks` (a static chunking rule with tests) and `NotFoundException` (Shared; retrying an unknown bookmark returns 404, mapped in `Program.cs`).
 - [x] done
 
 ### Stage 3: Hybrid search
@@ -96,6 +97,17 @@ First step of execution: copy this plan to `docs/plans/bookmark-indexer.md` (wor
 - **Test seam:** `BookmarkRepository.Search` runs against the real test DB with seeded chunks and hand-made embeddings. An exact-keyword match must rank, and so must a near-vector match.
 - **New types:** `SearchResultDto`, `SearchController`, and the search page and slice in the UI.
 - [x] done
+
+## Review fixes (after Stage 3)
+From the rules review of the whole feature:
+- Search sets `hnsw.ef_search = 100` (in a transaction) so the HNSW index really yields 50 vector candidates, not its default 40.
+- The 30 s timeout covers the whole page fetch (connect, load, read), driven by `TimeProvider` in `IndexService`; `LightpandaPageFetcher` honours the token for the whole call.
+- `GetNextPendingOrNull` includes `Chunks`, and indexing replaces any existing chunks.
+- Text extraction moved into `PageText` (static rule): when Readability finds little text (< 500 characters) but the page body holds more than three times as much, the body text is indexed instead (e.g. Microsoft Learn pages where only a banner was kept).
+- Snippets get "…" only when cut; `SearchService` validation and query prefix have tests.
+- UI ignores out-of-date list responses and keeps Retry errors separate from list errors.
+- `build.ps1` starts Postgres for the tests; `run.ps1` fails loudly when Postgres/Ollama aren't ready or the model pull fails, and stops both processes when either exits. Shared container helpers live in `containers.ps1`.
+- `Content` stays: re-chunking or re-indexing without refetching will read it.
 
 ## Out of scope
 - Authentication (single local user).
@@ -105,7 +117,7 @@ First step of execution: copy this plan to `docs/plans/bookmark-indexer.md` (wor
 ## Verification
 - `dotnet build -warnaserror` and `dotnet test` stay green each stage (enforced by the Stop hook).
 - **End to end:**
-  1. Run `build.ps1`, then `run.ps1`.
+  1. Run `build.ps1` (starts Postgres for the tests), then `run.ps1`.
   2. Import a real Firefox export at http://localhost:3000.
   3. Watch the Pending count fall while Indexed rises, and check that the logs show in Seq (http://localhost:8081).
   4. Force a failure, for example a dead URL, and use Retry.

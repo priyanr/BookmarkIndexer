@@ -5,7 +5,6 @@ using BookmarkIndexer.Core.Modules.Indexing;
 using BookmarkIndexer.Shared;
 using BookmarkIndexer.Shared.Types.Bookmarks;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using Xunit;
@@ -108,6 +107,40 @@ public class IndexServiceTests
         Assert.Equal((IndexStatus.Failed, "The page has no readable text."), (bookmark.Status, bookmark.Error));
     }
 
+    // Lightpanda can hang anywhere between connecting and reading the page; the whole fetch is bounded.
+    [Fact]
+    public async Task A_page_that_does_not_load_within_30_seconds_is_marked_failed()
+    {
+        await using var db = await TestDatabase.CreateEmpty();
+        Seed(db, "https://slow.example/");
+        await db.SaveChangesAsync();
+        var time = new FakeTimeProvider(Now);
+        var fetcher = new HangingPageFetcher();
+
+        var indexing = Service(db, fetcher, time: time).IndexNext(CancellationToken.None);
+        await fetcher.Started.Task;
+        time.Advance(TimeSpan.FromSeconds(30));
+
+        Assert.True(await indexing);
+        var bookmark = await db.Bookmarks.AsNoTracking().SingleAsync();
+        Assert.Equal((IndexStatus.Failed, "The page did not load within 30 seconds."), (bookmark.Status, bookmark.Error));
+    }
+
+    [Fact]
+    public async Task Indexing_a_bookmark_again_replaces_its_old_chunks()
+    {
+        await using var db = await TestDatabase.CreateEmpty();
+        Seed(db, "https://changed.example/");
+        db.Bookmarks.Local.Single().Chunks.Add(new BookmarkChunk { Position = 0, Text = "Text from an older version of the page", Embedding = new Pgvector.Vector(Vector(1f)) });
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        await Service(db, new FakePageFetcher(_ => ArticleHtml)).IndexNext(CancellationToken.None);
+
+        var chunk = Assert.Single(await db.Chunks.AsNoTracking().ToListAsync());
+        Assert.Contains("Reciprocal rank fusion merges the two result lists", chunk.Text);
+    }
+
     [Fact]
     public async Task Returns_false_when_nothing_is_pending()
     {
@@ -121,10 +154,10 @@ public class IndexServiceTests
         Assert.Empty(fetcher.FetchedUrls);
     }
 
-    static IndexService Service(AppDbContext db, IPageFetcher fetcher, FakeEmbeddingGenerator? embedder = null)
+    static IndexService Service(AppDbContext db, IPageFetcher fetcher, FakeEmbeddingGenerator? embedder = null, FakeTimeProvider? time = null)
     {
         embedder ??= new FakeEmbeddingGenerator(_ => Vector(1f));
-        return new IndexService(db, new BookmarkRepository(db), fetcher, embedder, new FakeTimeProvider(Now), NullLogger<IndexService>.Instance);
+        return new IndexService(db, new BookmarkRepository(db), fetcher, embedder, time ?? new FakeTimeProvider(Now), NullLogger<IndexService>.Instance);
     }
 
     static float[] Vector(float first)
@@ -153,24 +186,15 @@ public class IndexServiceTests
         }
     }
 
-    sealed class FakeEmbeddingGenerator(Func<string, float[]> embed) : IEmbeddingGenerator<string, Embedding<float>>
+    sealed class HangingPageFetcher : IPageFetcher
     {
-        public List<string> Inputs { get; } = [];
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        public Task<GeneratedEmbeddings<Embedding<float>>> GenerateAsync(IEnumerable<string> values, EmbeddingGenerationOptions? options = null, CancellationToken cancellationToken = default)
+        public async Task<string> FetchHtml(string url, CancellationToken ct)
         {
-            var inputs = values.ToList();
-            Inputs.AddRange(inputs);
-            return Task.FromResult(new GeneratedEmbeddings<Embedding<float>>(inputs.Select(v => new Embedding<float>(embed(v)))));
-        }
-
-        public object? GetService(Type serviceType, object? serviceKey = null)
-        {
-            return null;
-        }
-
-        public void Dispose()
-        {
+            Started.SetResult();
+            await Task.Delay(Timeout.Infinite, ct);
+            return "";
         }
     }
 }

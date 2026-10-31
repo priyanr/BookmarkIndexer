@@ -23,7 +23,9 @@ const bookmarksSlice = createSlice({
     list: { items: [], total: 0, page: 1, pageSize: 50 },
     counts: { all: 0, pending: 0, indexed: 0, failed: 0 },
     loading: false,
+    listRequestId: null,
     error: null,
+    retryError: null,
     importing: false,
     importResult: null,
     importError: null,
@@ -31,15 +33,19 @@ const bookmarksSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder
-      .addCase(fetchBookmarks.pending, (state) => {
+      // The page polls and switches tabs, so an older response can arrive after a newer request; only the latest counts.
+      .addCase(fetchBookmarks.pending, (state, action) => {
         state.loading = true;
+        state.listRequestId = action.meta.requestId;
         state.error = null;
       })
       .addCase(fetchBookmarks.fulfilled, (state, action) => {
+        if (action.meta.requestId !== state.listRequestId) return;
         state.loading = false;
         state.list = action.payload;
       })
       .addCase(fetchBookmarks.rejected, (state, action) => {
+        if (action.meta.requestId !== state.listRequestId) return;
         state.loading = false;
         state.error = action.error.message;
       })
@@ -59,11 +65,17 @@ const bookmarksSlice = createSlice({
         state.importing = false;
         state.importError = action.error.message;
       })
+      .addCase(retryBookmark.pending, (state) => {
+        state.retryError = null;
+      })
       .addCase(retryBookmark.rejected, (state, action) => {
-        state.error = action.error.message;
+        state.retryError = action.error.message;
+      })
+      .addCase(retryFailed.pending, (state) => {
+        state.retryError = null;
       })
       .addCase(retryFailed.rejected, (state, action) => {
-        state.error = action.error.message;
+        state.retryError = action.error.message;
       });
   },
 });

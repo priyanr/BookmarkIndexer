@@ -2,6 +2,7 @@ using BookmarkIndexer.Core.Model;
 using BookmarkIndexer.Core.Model.Bookmarks;
 using BookmarkIndexer.Core.Modules.Bookmarks;
 using BookmarkIndexer.Shared.Types.Bookmarks;
+using Microsoft.EntityFrameworkCore;
 using Pgvector;
 using Xunit;
 
@@ -57,6 +58,38 @@ public class BookmarkSearchTests
         var results = await new BookmarkRepository(db).Search("nothing matches this", Vector(x: 1, y: 0.5f), limit: 2);
 
         Assert.Equal(["https://a.example/", "https://b.example/"], results.Select(r => r.Url));
+    }
+
+    // pgvector's HNSW index returns at most hnsw.ef_search rows (default 40), which would cut the 50 vector candidates short.
+    [Fact]
+    public async Task Takes_50_vector_candidates_when_the_hnsw_index_is_used()
+    {
+        await using var db = await TestDatabase.CreateEmpty();
+        for (var i = 0; i < 60; i++)
+        {
+            Add(db, $"https://page{i:00}.example/", ($"page {i}", Vector(x: 1, y: i / 60f)));
+        }
+        await db.SaveChangesAsync();
+        // With 60 rows Postgres would scan the table; forcing the index makes the test hit the same path as real data.
+        await db.Database.OpenConnectionAsync();
+        await db.Database.ExecuteSqlRawAsync("SET enable_seqscan = off");
+
+        var results = await new BookmarkRepository(db).Search("nothing matches this", Vector(x: 1), limit: 100);
+
+        Assert.Equal(50, results.Count);
+    }
+
+    [Fact]
+    public async Task A_long_chunk_is_cut_to_300_characters_with_an_ellipsis()
+    {
+        await using var db = await TestDatabase.CreateEmpty();
+        var text = string.Concat(Enumerable.Repeat("0123456789", 40));
+        Add(db, "https://long.example/", (text, Vector(x: 1)));
+        await db.SaveChangesAsync();
+
+        var result = Assert.Single(await new BookmarkRepository(db).Search("anything", Vector(x: 1), limit: 20));
+
+        Assert.Equal(text[..300] + "…", result.Snippet);
     }
 
     static void Add(AppDbContext db, string url, params (string Text, Vector Embedding)[] chunks)

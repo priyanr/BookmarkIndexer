@@ -38,7 +38,7 @@ export default function SearchPage() {
             <li key={r.bookmarkId}>
               <a href={r.url} target="_blank" rel="noreferrer">{r.title || r.url}</a>
               <div className="url">{r.folderPath ? `${r.folderPath} · ` : ''}{r.url}</div>
-              <p className="snippet">{r.snippet}…</p>
+              <p className="snippet">{r.snippet}</p>
             </li>
           ))}
         </ol>

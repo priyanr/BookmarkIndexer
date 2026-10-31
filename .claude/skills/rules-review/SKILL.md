@@ -20,7 +20,7 @@ Run this in a new session, not the one that wrote the code: it has to read the d
    1. **Scope.** Every changed file and every new type traces to a stage in the plan. List anything that doesn't.
    2. **Existing features.** Any change to an existing feature's UI, flow, API contract, data or defaults that the plan didn't list.
    3. **New types.** Each new class, interface and record, with its reason. Flag those with one caller, or whose only reason is structure.
-   4. **Coding guideline.** Go section by section (Write less code, Method shape, Errors, Comments, Controllers, Abstractions, Data access, Testability, Naming). Skip what the build and architecture tests already enforce.
+   4. **Coding guideline.** Go section by section (Write less code, Method shape, Errors, Comments, Controllers, Abstractions, Data access, Testability, Naming). Skip what the build and architecture tests already enforce. In Data access, trace every navigation a service reads or changes (`order.Details.Clear()`, `bookmark.Chunks.Add(...)`) back to the repository method that loaded the entity, and check that method `Include`s it. Without the Include the collection is silently empty, so old children are never removed.
    5. **Tests.** Tests sit at the seams the plan agreed. Expected values are literals or come from the spec, not recomputed. No mocks of the team's own classes other than repositories. Each bug fix has a test that reproduces it.
 4. Don't change code yet.
 

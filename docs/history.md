@@ -2,6 +2,12 @@
 
 What changed and which existing features it affected. Newest first.
 
+## 2026-11-01: Fix failed fetches
+Plan: `docs/plans/fix-failed-fetches.md`, Stage 1.
+
+Affected existing features:
+- **Indexing:** Stack Exchange question links (stackoverflow, serverfault, superuser, askubuntu, *.stackexchange.com) are loaded from the Stack Exchange API, not Lightpanda. Their indexed text is the question and its answers, highest score first, without comments or page chrome. Over the API's 300 requests a day they fail with the API's throttle message. Pages that answer with an AWS WAF challenge (IMDb, HowStuffWorks) take a few seconds longer and are indexed instead of failing with "The page has no readable text.". When the reload redirects and the new URL is challenged again, the fetcher waits for that challenge too instead of failing with "HTTP 301".
+
 ## 2026-10-31: Index 4 bookmarks at a time
 Plan: `docs/plans/bookmark-indexer.md`, Stage 4.
 

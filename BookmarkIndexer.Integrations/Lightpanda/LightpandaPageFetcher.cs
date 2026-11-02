@@ -20,6 +20,14 @@ public class LightpandaPageFetcher(string cdpUrl) : IPageFetcher
             var page = await context.NewPageAsync();
 
             var response = await page.GotoAsync(url);
+            // AWS WAF (IMDb, HowStuffWorks) first answers 202 with a JavaScript challenge. Lightpanda solves it and the
+            // page reloads with the real content a few seconds later. The reload can redirect (an old URL moved) and the
+            // new URL can be challenged again, so the wait skips 3xx and repeats until a response is not a challenge.
+            while (response != null && await response.HeaderValueAsync("x-amzn-waf-action") == "challenge")
+            {
+                response = await page.WaitForResponseAsync(r => r.Request.IsNavigationRequest && r.Status is < 300 or >= 400);
+                await page.WaitForLoadStateAsync(LoadState.Load);
+            }
             if (response is { Ok: false })
             {
                 throw new HttpRequestException($"HTTP {response.Status} {response.StatusText}".Trim());

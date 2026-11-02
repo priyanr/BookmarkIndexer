@@ -1,7 +1,9 @@
+using System.Net;
 using System.Text.Json.Serialization;
 using BookmarkIndexer.Core;
 using BookmarkIndexer.Core.Model;
 using BookmarkIndexer.Integrations.Lightpanda;
+using BookmarkIndexer.Integrations.StackExchange;
 using BookmarkIndexer.Shared;
 using BookmarkIndexer.Shared.Exceptions;
 using BookmarkIndexer.Web.Workers;
@@ -18,8 +20,11 @@ builder.Services.AddSerilog((services, logger) => logger
     .ReadFrom.Services(services));
 
 builder.Services.AddCore(builder.Configuration);
-builder.Services.AddSingleton<IPageFetcher>(new LightpandaPageFetcher(
-    builder.Configuration["Lightpanda:CdpUrl"] ?? throw new InvalidOperationException("Lightpanda:CdpUrl is not configured.")));
+var lightpanda = new LightpandaPageFetcher(
+    builder.Configuration["Lightpanda:CdpUrl"] ?? throw new InvalidOperationException("Lightpanda:CdpUrl is not configured."));
+builder.Services.AddHttpClient<IPageFetcher, StackExchangePageFetcher>((http, _) => new StackExchangePageFetcher(http, lightpanda))
+    // The Stack Exchange API always sends gzip.
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AutomaticDecompression = DecompressionMethods.All });
 builder.Services.AddSingleton<IEmbeddingGenerator<string, Embedding<float>>>(new OllamaApiClient(
     builder.Configuration["Ollama:Url"] ?? throw new InvalidOperationException("Ollama:Url is not configured."),
     builder.Configuration["Ollama:EmbeddingModel"] ?? throw new InvalidOperationException("Ollama:EmbeddingModel is not configured.")));

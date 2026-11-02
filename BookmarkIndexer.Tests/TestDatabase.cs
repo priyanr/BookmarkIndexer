@@ -15,13 +15,17 @@ public static class TestDatabase
 
     public static async Task<AppDbContext> CreateEmpty()
     {
-        var db = Connect();
         if (!isMigrated)
         {
-            await db.Database.EnsureDeletedAsync();
-            await db.Database.MigrateAsync();
+            // DROP and CREATE DATABASE force a checkpoint, which takes over a minute while the API is indexing into the
+            // same container. A drop cut off by the 30 s default leaves the database invalid and every later test fails.
+            await using var setupDb = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
+                .UseNpgsql(ConnectionString, npgsql => npgsql.UseVector().CommandTimeout(300)).Options);
+            await setupDb.Database.EnsureDeletedAsync();
+            await setupDb.Database.MigrateAsync();
             isMigrated = true;
         }
+        var db = Connect();
         await db.Database.ExecuteSqlRawAsync("""TRUNCATE "Bookmarks" RESTART IDENTITY CASCADE""");
         return db;
     }

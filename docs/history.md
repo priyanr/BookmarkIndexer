@@ -2,6 +2,10 @@
 
 What changed and which existing features it affected. Newest first.
 
+## 2026-11-02: Remove Seq
+Affected existing features:
+- **Scripts:** `run.ps1` no longer starts the Seq container and :8081 is gone. API logs go only to the console and the daily rolling file in `Logs\api` (14 days kept), which was already written before.
+
 ## 2026-11-01: Fix failed fetches
 Plan: `docs/plans/fix-failed-fetches.md`, Stage 1.
 

@@ -1,0 +1,60 @@
+# Everything in containers: docker compose up -d --build, then open http://localhost:3000.
+# For development, start only the services the API needs: docker compose up -d postgres ollama ollama-pull lightpanda
+# Their ports are published on localhost so the API and the tests can run on the host.
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_PASSWORD: postgres
+    ports: ["127.0.0.1:5432:5432"]
+    volumes: [postgres:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 2s
+      retries: 30
+
+  ollama:
+    image: ollama/ollama:latest
+    ports: ["127.0.0.1:11434:11434"]
+    volumes: [ollama:/root/.ollama]
+
+  # Pulls the embedding model once into the ollama volume. Without it every bookmark fails to index.
+  # It retries until the ollama service accepts connections.
+  ollama-pull:
+    image: ollama/ollama:latest
+    environment:
+      OLLAMA_HOST: ollama:11434
+    command: ["pull", "nomic-embed-text"]
+    restart: on-failure
+    depends_on: [ollama]
+
+  lightpanda:
+    image: lightpanda/browser:nightly
+    # Lightpanda only accepts CDP connections whose Host header is localhost, an IP or the advertised host.
+    command: ["/bin/lightpanda", "serve", "--host", "0.0.0.0", "--port", "9222", "--advertise-host", "lightpanda"]
+    ports: ["127.0.0.1:9222:9222"]
+
+  api:
+    build: .
+    environment:
+      # The image has no Kerberos library; without this Npgsql logs an error trying to load it.
+      ConnectionStrings__Db: Host=postgres;Port=5432;Database=bookmarkindexer;Username=postgres;Password=postgres;GSS Encryption Mode=Disable
+      Lightpanda__CdpUrl: ws://lightpanda:9222
+      Ollama__Url: http://ollama:11434
+    volumes: [logs:/app/Logs]
+    depends_on:
+      postgres: { condition: service_healthy }
+      ollama-pull: { condition: service_completed_successfully }
+      lightpanda: { condition: service_started }
+    restart: unless-stopped
+
+  ui:
+    build: ui
+    ports: ["127.0.0.1:3000:3000"]
+    depends_on: [api]
+    restart: unless-stopped
+
+volumes:
+  postgres:
+  ollama:
+  logs:

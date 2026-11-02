@@ -2,6 +2,15 @@
 
 What changed and which existing features it affected. Newest first.
 
+## 2026-11-02: Run in containers, README and license
+`compose.yaml` runs Postgres, Ollama (with a one-off model pull), Lightpanda, the API and the UI; `Dockerfile` and
+`ui/Dockerfile` build the API and UI images. Added `README.md` and an MIT `LICENSE`.
+
+Affected existing features:
+- **Scripts:** the API's log path in `appsettings.json` is now relative (`Logs/api/log-.txt`) instead of
+  `<publish folder>/...`. `run.ps1` sets `Serilog__WriteTo__File__Args__path` so the published API still writes to
+  `Logs\api` next to `Data`. `WriteTo` became a named object so that variable doesn't depend on sink order.
+
 ## 2026-11-02: Remove Seq
 Affected existing features:
 - **Scripts:** `run.ps1` no longer starts the Seq container and :8081 is gone. API logs go only to the console and the daily rolling file in `Logs\api` (14 days kept), which was already written before.

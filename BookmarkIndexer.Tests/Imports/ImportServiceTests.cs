@@ -33,7 +33,7 @@ public class ImportServiceTests
     {
         await using var db = await TestDatabase.CreateEmpty();
 
-        var result = await new ImportService(db, new FirefoxHtmlBookmarkImporter()).Import(FirstExport);
+        var result = await new ImportService(db, new HtmlBookmarkImporter()).Import(FirstExport);
 
         Assert.Equal(new ImportResultDto(Added: 2, Updated: 0, Skipped: 0), result);
         Assert.All(await db.Bookmarks.ToListAsync(), b => Assert.Equal(IndexStatus.Pending, b.Status));
@@ -43,7 +43,7 @@ public class ImportServiceTests
     public async Task Re_import_adds_only_new_urls_and_keeps_the_index_status_of_existing_ones()
     {
         await using var db = await TestDatabase.CreateEmpty();
-        var service = new ImportService(db, new FirefoxHtmlBookmarkImporter());
+        var service = new ImportService(db, new HtmlBookmarkImporter());
         await service.Import(FirstExport);
         await db.Bookmarks.ExecuteUpdateAsync(s => s.SetProperty(b => b.Status, IndexStatus.Indexed));
 
@@ -65,8 +65,8 @@ public class ImportServiceTests
     {
         await using var db = await TestDatabase.CreateEmpty();
 
-        var error = await Assert.ThrowsAsync<BadRequestException>(() => new ImportService(db, new FirefoxHtmlBookmarkImporter()).Import("<html></html>"));
+        var error = await Assert.ThrowsAsync<BadRequestException>(() => new ImportService(db, new HtmlBookmarkImporter()).Import("<html></html>"));
 
-        Assert.Equal("The file contains no http(s) bookmarks. Export bookmarks from Firefox as HTML.", error.Message);
+        Assert.Equal("The file contains no http(s) bookmarks. Export bookmarks from Firefox, Chrome or Edge as HTML.", error.Message);
     }
 }

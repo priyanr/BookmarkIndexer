@@ -1,6 +1,6 @@
 # BookmarkIndexer
 
-Indexes a single user's browser bookmarks. It imports a Firefox bookmarks HTML export, loads each URL in headless Lightpanda, extracts the readable text, embeds it with Ollama and stores it in Postgres (pgvector). A Next.js UI imports bookmarks, lists them by index status and searches them with hybrid vector and full-text search. Plan: `docs/plans/bookmark-indexer.md`. Current state: `docs/status.md`; changes and affected features: `docs/history.md`; known issues left as they are: `docs/issues_accepted.md`.
+Indexes a single user's browser bookmarks. It imports a bookmarks HTML export (Firefox, Chrome or Edge), loads each URL in headless Lightpanda, extracts the readable text, embeds it with Ollama and stores it in Postgres (pgvector). A Next.js UI imports bookmarks, lists them by index status and searches them with hybrid vector and full-text search. Plan: `docs/plans/bookmark-indexer.md`. Current state: `docs/status.md`; changes and affected features: `docs/history.md`; known issues left as they are: `docs/issues_accepted.md`.
 
 ## Commands
 
@@ -26,7 +26,7 @@ Domain terms are defined in `GLOSSARY.md`. Use those names in code, DTOs, tests 
 
 - Browser (fetching pages): `IPageFetcher` (Shared), implemented in `Integrations/Lightpanda/` over CDP on :9222.
 - Embeddings: `IEmbeddingGenerator<string, Embedding<float>>` (Microsoft.Extensions.AI), implemented by OllamaSharp against :11434.
-- Bookmark export formats: `IBookmarkImporter` (Shared), with the Firefox HTML importer in Core.
+- Bookmark export formats: `IBookmarkImporter` (Shared), with the HTML importer (`HtmlBookmarkImporter`) in Core.
 
 Never log: page contents.
 

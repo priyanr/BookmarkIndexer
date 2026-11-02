@@ -2,7 +2,7 @@
 
 Search your browser bookmarks by what the pages say, not just by their titles.
 
-BookmarkIndexer imports a Firefox bookmarks export, loads every page in a headless browser, extracts the readable
+BookmarkIndexer imports a Firefox, Chrome or Edge bookmarks export, loads every page in a headless browser, extracts the readable
 text and indexes it for hybrid search: meaning-based (vector) search and keyword (full-text) search, merged into one
 ranking. Everything runs on your machine; no page text or query leaves it.
 
@@ -10,7 +10,7 @@ It is built for one person and has no login. Run it on localhost only.
 
 ## What it does
 
-- **Import** a Firefox bookmarks HTML export. New URLs become Pending; URLs you already have keep their indexed text
+- **Import** a bookmarks HTML export from Firefox, Chrome or Edge. New URLs become Pending; URLs you already have keep their indexed text
   and get their title and folder updated.
 - **Index** in the background: each Pending bookmark is loaded in [Lightpanda](https://lightpanda.io) (a headless
   browser), its readable text is extracted with a Readability port, split into chunks and embedded with
@@ -76,9 +76,11 @@ You need Docker with Compose v2. The first start downloads the images and the em
 
 3. Open http://localhost:3000, go to **Import** and upload your bookmarks file.
 
-### Export your Firefox bookmarks
+### Export your bookmarks
 
-Firefox → Bookmarks → **Manage Bookmarks** (Ctrl+Shift+O) → **Import and Backup** → **Export Bookmarks to HTML…**
+- Firefox → Bookmarks → **Manage Bookmarks** (Ctrl+Shift+O) → **Import and Backup** → **Export Bookmarks to HTML…**
+- Chrome → Bookmarks and lists → **Bookmark manager** (Ctrl+Shift+O) → ⋮ → **Export bookmarks**
+- Edge → Favorites (Ctrl+Shift+O) → ⋯ → **Export favorites**
 
 ### Day to day
 
@@ -140,7 +142,8 @@ before `npm run build`.
 
 ## Known limitations
 
-- Firefox HTML exports only. Chrome and Edge export the same Netscape format, but only Firefox exports are tested.
+- HTML exports only (the Netscape bookmark format that Firefox, Chrome and Edge write). The importer reads every
+  http(s) `<a>` link, so other browsers' HTML exports should work too.
 - Sites behind Cloudflare and similar bot checks (Medium, Quora, NYTimes and others), login walls and dead pages fail
   to index. Their error is shown and you can Retry them.
 - Full-text search needs every word of the query to appear in one chunk. A misspelt word leaves only vector search,

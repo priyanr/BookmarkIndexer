@@ -18,7 +18,7 @@ public static class DependencyInjection
             ?? throw new InvalidOperationException("ConnectionStrings:Db is not configured.");
         services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString, npgsql => npgsql.UseVector()));
         services.AddSingleton(TimeProvider.System);
-        services.AddSingleton<IBookmarkImporter, FirefoxHtmlBookmarkImporter>();
+        services.AddSingleton<IBookmarkImporter, HtmlBookmarkImporter>();
         services.AddScoped<IBookmarkRepository, BookmarkRepository>();
         services.AddScoped<ImportService>();
         services.AddScoped<BookmarkService>();

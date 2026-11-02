@@ -3,7 +3,7 @@ using Xunit;
 
 namespace BookmarkIndexer.Tests.Imports;
 
-public class FirefoxHtmlBookmarkImporterTests
+public class HtmlBookmarkImporterTests
 {
     const string Export = """
         <!DOCTYPE NETSCAPE-Bookmark-file-1>
@@ -32,7 +32,7 @@ public class FirefoxHtmlBookmarkImporterTests
     [Fact]
     public void Reads_http_bookmarks_with_their_folder_path()
     {
-        var bookmarks = new FirefoxHtmlBookmarkImporter().Read(Export);
+        var bookmarks = new HtmlBookmarkImporter().Read(Export);
 
         Assert.Equal(
             [
@@ -46,6 +46,6 @@ public class FirefoxHtmlBookmarkImporterTests
     [Fact]
     public void Content_without_bookmarks_gives_an_empty_list()
     {
-        Assert.Empty(new FirefoxHtmlBookmarkImporter().Read("<html><body>not an export</body></html>"));
+        Assert.Empty(new HtmlBookmarkImporter().Read("<html><body>not an export</body></html>"));
     }
 }

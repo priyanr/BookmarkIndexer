@@ -15,7 +15,7 @@ public class ImportService(AppDbContext db, IBookmarkImporter importer)
         var imported = importer.Read(content);
         if (imported.Count == 0)
         {
-            throw new BadRequestException("The file contains no http(s) bookmarks. Export bookmarks from Firefox as HTML.");
+            throw new BadRequestException("The file contains no http(s) bookmarks. Export bookmarks from Firefox, Chrome or Edge as HTML.");
         }
 
         var urls = imported.Select(b => b.Url).ToList();

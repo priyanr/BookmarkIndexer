@@ -13,18 +13,18 @@ First step of execution: copy this plan to `docs/plans/bookmark-indexer.md` (wor
 - Logs go through Serilog to a Seq container (data in `Logs\seq`) and to rolling files in `Logs\api`.
 - Processing is a background worker that handles one bookmark at a time with a timeout. Failures keep their error message, and the UI has a Retry action.
 - On re-import, a URL that already exists is skipped as content, but its title and folder are updated. Only new URLs become Pending.
-- Text extraction uses the `SmartReader` package (a Readability port). AngleSharp comes with it and also parses the Firefox HTML.
+- Text extraction uses the `SmartReader` package (a Readability port). AngleSharp comes with it and also parses the bookmarks HTML.
 
 ## Conflicts with the scaffold
 - **Rename:** `AppName` becomes `BookmarkIndexer` in CLAUDE.md, the tests, the namespaces and the migration command.
 - **Web project:** The guideline describes `BookmarkIndexer.Web` as MVC with Razor. Here it becomes an API-only project with controllers, the worker and `Program.cs`. The UI lives in `ui/` (Next.js), outside the .NET solution. I'll update the Layout line in CLAUDE.md.
 - **"Provider" naming:** `ArchitectureTests` bans type names ending in `Provider`. The swap points you asked for keep their role but take these names:
-  - `IBookmarkImporter` (Shared), implemented by `FirefoxHtmlBookmarkImporter` (Core/Modules/Imports). Later formats get another implementation.
+  - `IBookmarkImporter` (Shared), implemented by `HtmlBookmarkImporter` (Core/Modules/Imports). Later formats get another implementation.
   - `IPageFetcher` (Shared), implemented by `LightpandaPageFetcher` (Integrations/Lightpanda). A later `PlaywrightPageFetcher` is just another registration.
   - Embeddings use `Microsoft.Extensions.AI`'s `IEmbeddingGenerator<string, Embedding<float>>`, implemented by `OllamaApiClient` from the `OllamaSharp` package. This needs no interface of our own. Moving to OpenAI or another API later is a one-line DI change.
 - **Tests:** The guideline says SQLite in-memory, but pgvector and `tsvector` need real Postgres. Service and repository tests therefore run against a `bookmarkindexer_test` database on the local wslc Postgres, which is migrated and wiped per test class. Docker-based Testcontainers are not used because they don't drive wslc.
 - **New packages (all need your OK, central in Directory.Packages.props):**
-  - API: AngleSharp (direct reference in Core for the Firefox importer; SmartReader depends on it too), Npgsql.EntityFrameworkCore.PostgreSQL, Pgvector.EntityFrameworkCore, Microsoft.EntityFrameworkCore.Design, Microsoft.Playwright, SmartReader, OllamaSharp, Microsoft.Extensions.AI.Abstractions, Serilog.AspNetCore, Serilog.Sinks.Seq, Serilog.Sinks.File.
+  - API: AngleSharp (direct reference in Core for the HTML importer; SmartReader depends on it too), Npgsql.EntityFrameworkCore.PostgreSQL, Pgvector.EntityFrameworkCore, Microsoft.EntityFrameworkCore.Design, Microsoft.Playwright, SmartReader, OllamaSharp, Microsoft.Extensions.AI.Abstractions, Serilog.AspNetCore, Serilog.Sinks.Seq, Serilog.Sinks.File.
   - Tests: xunit, xunit.runner.visualstudio, Microsoft.NET.Test.Sdk, Microsoft.Extensions.TimeProvider.Testing.
   - UI npm: next, react, react-dom, @reduxjs/toolkit, react-redux.
 
@@ -61,10 +61,10 @@ First step of execution: copy this plan to `docs/plans/bookmark-indexer.md` (wor
 ### Stage 1: Import, then list as Pending
 - **Behaviour:** On the Import page you upload a Firefox `.html` file. `POST /api/imports` (multipart) parses it and saves new URLs as Pending, updating the title and folder of existing ones. It returns `ImportResultDto(added, updated, skipped)`. The Bookmarks page shows tabs for All, Pending, Indexed and Failed with counts, plus a paged list (`GET /api/bookmarks?status=&page=`).
 - **Test seam:**
-  - `FirefoxHtmlBookmarkImporter` is a pure test on a sample export with nested folders and a non-http `place:` URL that must be skipped.
+  - `HtmlBookmarkImporter` is a pure test on a sample export with nested folders and a non-http `place:` URL that must be skipped.
   - `ImportService` uses the real test DB and checks that re-import only adds new URLs.
 - **New types:**
-  - Entities: `Bookmark`. Enum: `IndexStatus`. Interface: `IBookmarkImporter` (the swap point for export formats). Class: `FirefoxHtmlBookmarkImporter`.
+  - Entities: `Bookmark`. Enum: `IndexStatus`. Interface: `IBookmarkImporter` (the swap point for export formats). Class: `HtmlBookmarkImporter`.
   - Services: `ImportService`, `BookmarkService` (list and counts). No repository yet: both queries have one caller, so they stay inline (coding guideline). `IBookmarkRepository` arrives with the first aggregate load in Stage 2.
   - `BadRequestException` (Shared): input errors become HTTP 400 with the message, mapped once in `Program.cs`.
   - Controllers: `ImportsController`, `BookmarksController`.

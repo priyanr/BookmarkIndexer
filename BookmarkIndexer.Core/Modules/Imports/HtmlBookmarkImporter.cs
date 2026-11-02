@@ -5,8 +5,8 @@ using BookmarkIndexer.Shared.Types.Imports;
 
 namespace BookmarkIndexer.Core.Modules.Imports;
 
-/// <summary>Reads the Netscape bookmark HTML that Firefox writes with "Export Bookmarks to HTML".</summary>
-public class FirefoxHtmlBookmarkImporter : IBookmarkImporter
+/// <summary>Reads the Netscape bookmark HTML that Firefox, Chrome and Edge write when they export bookmarks.</summary>
+public class HtmlBookmarkImporter : IBookmarkImporter
 {
     public List<ImportedBookmarkDto> Read(string content)
     {

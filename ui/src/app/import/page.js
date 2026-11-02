@@ -18,7 +18,12 @@ export default function ImportPage() {
   return (
     <section>
       <h1>Import bookmarks</h1>
-      <p>In Firefox open Bookmarks › Manage bookmarks › Import and Backup › Export Bookmarks to HTML, then pick that file here.</p>
+      <p>Export your bookmarks to HTML, then pick that file here.</p>
+      <ul>
+        <li>Firefox: Bookmarks › Manage bookmarks › Import and Backup › Export Bookmarks to HTML</li>
+        <li>Chrome: Bookmarks and lists › Bookmark manager › ⋮ › Export bookmarks</li>
+        <li>Edge: Favorites › ⋯ › Export favorites</li>
+      </ul>
       <form onSubmit={submit} className="row">
         <input type="file" accept=".html,.htm" onChange={(e) => setFile(e.target.files[0] ?? null)} />
         <button type="submit" disabled={!file || importing}>

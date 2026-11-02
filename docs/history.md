@@ -2,6 +2,14 @@
 
 What changed and which existing features it affected. Newest first.
 
+## 2026-11-02: Import Chrome and Edge exports
+`FirefoxHtmlBookmarkImporter` is now `HtmlBookmarkImporter`: it reads every http(s) `<a>` link, which covers the
+Netscape bookmark HTML that Firefox, Chrome and Edge all export. No parsing change.
+
+Affected existing features:
+- **Import:** the Import page explains how to export from Firefox, Chrome and Edge. A file with no http(s) bookmarks
+  now fails with "Export bookmarks from Firefox, Chrome or Edge as HTML." instead of "Export bookmarks from Firefox as HTML.".
+
 ## 2026-11-02: Run in containers, README and license
 `compose.yaml` runs Postgres, Ollama (with a one-off model pull), Lightpanda, the API and the UI; `Dockerfile` and
 `ui/Dockerfile` build the API and UI images. Added `README.md` and an MIT `LICENSE`.

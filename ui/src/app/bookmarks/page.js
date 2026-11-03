@@ -1,10 +1,10 @@
 'use client';
 
-import { Suspense, useEffect } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchBookmarks, fetchCounts, retryBookmark, retryFailed } from '@/store/bookmarksSlice';
+import { closeContent, fetchBookmarks, fetchContent, fetchCounts, retryBookmark, retryFailed } from '@/store/bookmarksSlice';
 
 const tabs = [
   { status: '', label: 'All', count: 'all' },
@@ -27,7 +27,9 @@ function Bookmarks() {
   const searchParams = useSearchParams();
   const status = searchParams.get('status') ?? '';
   const page = Number(searchParams.get('page') ?? 1);
-  const { list, counts, loading, error, retryError } = useSelector((state) => state.bookmarks);
+  const { list, counts, loading, error, retryError, content, contentError } = useSelector((state) => state.bookmarks);
+  // Kept here rather than looked up in the list, because the 5 s refresh can move the bookmark off this page.
+  const [contentBookmark, setContentBookmark] = useState(null);
   const pageCount = Math.max(1, Math.ceil(list.total / list.pageSize));
 
   // The worker indexes in the background, so the page refreshes to show progress.
@@ -46,6 +48,16 @@ function Bookmarks() {
     if (nextStatus) query.set('status', nextStatus);
     if (nextPage > 1) query.set('page', nextPage);
     return `/bookmarks?${query}`;
+  }
+
+  function openContent(bookmark) {
+    setContentBookmark(bookmark);
+    dispatch(fetchContent(bookmark.id));
+  }
+
+  function hideContent() {
+    setContentBookmark(null);
+    dispatch(closeContent());
   }
 
   return (
@@ -89,6 +101,9 @@ function Bookmarks() {
                 {b.status === 'Failed' && (
                   <button className="link" onClick={() => dispatch(retryBookmark({ id: b.id, status, page }))}>Retry</button>
                 )}
+                {b.status === 'Indexed' && (
+                  <button className="link" onClick={() => openContent(b)}>Content</button>
+                )}
               </td>
               <td>{b.addedAt ? new Date(b.addedAt).toLocaleDateString() : ''}</td>
             </tr>
@@ -101,6 +116,20 @@ function Bookmarks() {
         <span>Page {page} of {pageCount}</span>
         {page < pageCount && <Link href={href(status, page + 1)}>Next ›</Link>}
       </div>
+      {contentBookmark && (
+        <div className="overlay" onClick={hideContent}>
+          <div className="viewer" onClick={(e) => e.stopPropagation()}>
+            <div className="row">
+              <strong>{contentBookmark.title || contentBookmark.url}</strong>
+              {content !== null && <span className="count">{content.length.toLocaleString()} characters</span>}
+              <button className="close" onClick={hideContent}>Close</button>
+            </div>
+            {contentError && <p className="error">{contentError}</p>}
+            {content === null && !contentError && <p>Loading…</p>}
+            {content !== null && <pre className="content">{content}</pre>}
+          </div>
+        </div>
+      )}
     </section>
   );
 }

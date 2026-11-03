@@ -58,6 +58,43 @@ public class BookmarkServiceTests
         Assert.Equal([IndexStatus.Pending, IndexStatus.Pending, IndexStatus.Indexed], statuses);
     }
 
+    [Fact]
+    public async Task Get_content_returns_the_text_extracted_when_the_bookmark_was_indexed()
+    {
+        await using var db = await TestDatabase.CreateEmpty();
+        var bookmark = Add(db, "https://indexed.example/", IndexStatus.Indexed);
+        bookmark.Content = "How to bake sourdough bread.";
+        await db.SaveChangesAsync();
+
+        var result = await Service(db).GetContent(bookmark.Id);
+
+        Assert.Equal("How to bake sourdough bread.", result.Content);
+    }
+
+    [Theory]
+    [InlineData(IndexStatus.Pending)]
+    [InlineData(IndexStatus.Failed)]
+    public async Task Get_content_refuses_a_bookmark_that_is_not_indexed(IndexStatus status)
+    {
+        await using var db = await TestDatabase.CreateEmpty();
+        // A re-imported bookmark keeps its old content while it waits to be indexed again.
+        var bookmark = Add(db, "https://waiting.example/", status);
+        bookmark.Content = "Old text.";
+        await db.SaveChangesAsync();
+
+        var error = await Assert.ThrowsAsync<BadRequestException>(() => Service(db).GetContent(bookmark.Id));
+
+        Assert.Equal("Only indexed bookmarks have content.", error.Message);
+    }
+
+    [Fact]
+    public async Task Get_content_of_an_unknown_bookmark_is_not_found()
+    {
+        await using var db = await TestDatabase.CreateEmpty();
+
+        await Assert.ThrowsAsync<NotFoundException>(() => Service(db).GetContent(42));
+    }
+
     static BookmarkService Service(AppDbContext db)
     {
         return new BookmarkService(db, new BookmarkRepository(db));

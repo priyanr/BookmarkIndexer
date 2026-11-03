@@ -21,6 +21,12 @@ public class BookmarksController(BookmarkService bookmarks) : ControllerBase
         return await bookmarks.Counts();
     }
 
+    [HttpGet("{id}/content")]
+    public async Task<BookmarkContentDto> GetContent(int id)
+    {
+        return await bookmarks.GetContent(id);
+    }
+
     [HttpPost("{id}/retry")]
     public async Task<IActionResult> Retry(int id)
     {

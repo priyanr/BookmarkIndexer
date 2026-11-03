@@ -27,6 +27,10 @@ export function getBookmarkCounts() {
   return send('/api/bookmarks/counts');
 }
 
+export function getBookmarkContent(id) {
+  return send(`/api/bookmarks/${id}/content`);
+}
+
 export function retryBookmark(id) {
   return send(`/api/bookmarks/${id}/retry`, { method: 'POST' });
 }

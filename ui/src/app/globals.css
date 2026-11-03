@@ -20,6 +20,10 @@ h1 { font-size: 1.4rem; }
 .status.indexed { background: #dafbe1; }
 .status.failed { background: #ffebe9; }
 .link { background: none; border: none; color: #0969da; cursor: pointer; margin-left: 0.5rem; padding: 0; }
+.overlay { position: fixed; inset: 0; background: rgba(31, 35, 40, 0.5); display: flex; justify-content: center; align-items: center; }
+.viewer { background: #fff; border-radius: 6px; padding: 0 1rem 1rem; width: min(900px, 90vw); max-height: 85vh; display: flex; flex-direction: column; }
+.viewer .close { margin-left: auto; }
+.content { overflow: auto; white-space: pre-wrap; word-break: break-word; font-family: inherit; font-size: 0.9rem; margin: 0; }
 .search { flex: 1; padding: 0.5rem 0.75rem; font-size: 1rem; border: 1px solid #d0d7de; border-radius: 6px; }
 .results { padding-left: 1.25rem; }
 .results li { background: #fff; border: 1px solid #d0d7de; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 0.75rem; }

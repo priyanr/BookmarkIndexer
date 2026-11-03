@@ -2,6 +2,14 @@
 
 What changed and which existing features it affected. Newest first.
 
+## 2026-11-03: View page content
+Plan: `docs/plans/view-page-content.md`, Stages 1–2. `GET /api/bookmarks/{id}/content` and a "Content" button that
+shows the extracted text in an overlay.
+
+Affected existing features:
+- **Bookmarks list:** Indexed rows have a "Content" button.
+- **Search:** each result has a "Content" button next to its title. Results and ranking are unchanged.
+
 ## 2026-11-02: Import Chrome and Edge exports
 `FirefoxHtmlBookmarkImporter` is now `HtmlBookmarkImporter`: it reads every http(s) `<a>` link, which covers the
 Netscape bookmark HTML that Firefox, Chrome and Edge all export. No parsing change.
@@ -16,7 +24,7 @@ Affected existing features:
 
 Affected existing features:
 - **Scripts:** the API's log path in `appsettings.json` is now relative (`Logs/api/log-.txt`) instead of
-  `<publish folder>/...`. `run.ps1` sets `Serilog__WriteTo__File__Args__path` so the published API still writes to
+  an absolute path. `run.ps1` sets `Serilog__WriteTo__File__Args__path` so the published API still writes to
   `Logs\api` next to `Data`. `WriteTo` became a named object so that variable doesn't depend on sink order.
 
 ## 2026-11-02: Remove Seq

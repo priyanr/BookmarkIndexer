@@ -27,6 +27,17 @@ public class BookmarkService(AppDbContext db, IBookmarkRepository bookmarks)
             byStatus.GetValueOrDefault(IndexStatus.Failed));
     }
 
+    public async Task<BookmarkContentDto> GetContent(int id)
+    {
+        var bookmark = await bookmarks.GetByIdOrNull(id) ?? throw new NotFoundException($"Bookmark {id} does not exist.");
+        // A re-imported bookmark keeps its old content while Pending; it is shown again once indexing has replaced it.
+        if (bookmark.Status != IndexStatus.Indexed)
+        {
+            throw new BadRequestException("Only indexed bookmarks have content.");
+        }
+        return new BookmarkContentDto(bookmark.Content ?? throw new InvalidOperationException($"Indexed bookmark {id} has no content."));
+    }
+
     public async Task Retry(int id)
     {
         var bookmark = await bookmarks.GetByIdOrNull(id) ?? throw new NotFoundException($"Bookmark {id} does not exist.");

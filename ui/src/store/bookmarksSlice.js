@@ -4,6 +4,7 @@ import * as api from '@/api/bookmarksApi';
 export const fetchBookmarks = createAsyncThunk('bookmarks/fetch', ({ status, page }) => api.getBookmarks(status, page));
 export const fetchCounts = createAsyncThunk('bookmarks/fetchCounts', () => api.getBookmarkCounts());
 export const importFile = createAsyncThunk('bookmarks/import', (file) => api.importBookmarks(file));
+export const fetchContent = createAsyncThunk('bookmarks/fetchContent', (id) => api.getBookmarkContent(id));
 
 // After a retry the list and counts are stale, so both are reloaded for the page being viewed.
 export const retryBookmark = createAsyncThunk('bookmarks/retry', async ({ id, status, page }, { dispatch }) => {
@@ -29,8 +30,18 @@ const bookmarksSlice = createSlice({
     importing: false,
     importResult: null,
     importError: null,
+    // The bookmark whose page content is open; null when the viewer is closed.
+    contentBookmarkId: null,
+    content: null,
+    contentError: null,
   },
-  reducers: {},
+  reducers: {
+    closeContent: (state) => {
+      state.contentBookmarkId = null;
+      state.content = null;
+      state.contentError = null;
+    },
+  },
   extraReducers: (builder) => {
     builder
       // The page polls and switches tabs, so an older response can arrive after a newer request; only the latest counts.
@@ -65,6 +76,20 @@ const bookmarksSlice = createSlice({
         state.importing = false;
         state.importError = action.error.message;
       })
+      .addCase(fetchContent.pending, (state, action) => {
+        state.contentBookmarkId = action.meta.arg;
+        state.content = null;
+        state.contentError = null;
+      })
+      // Ignore a response for a bookmark the viewer no longer shows.
+      .addCase(fetchContent.fulfilled, (state, action) => {
+        if (action.meta.arg !== state.contentBookmarkId) return;
+        state.content = action.payload.content;
+      })
+      .addCase(fetchContent.rejected, (state, action) => {
+        if (action.meta.arg !== state.contentBookmarkId) return;
+        state.contentError = action.error.message;
+      })
       .addCase(retryBookmark.pending, (state) => {
         state.retryError = null;
       })
@@ -80,4 +105,5 @@ const bookmarksSlice = createSlice({
   },
 });
 
+export const { closeContent } = bookmarksSlice.actions;
 export default bookmarksSlice.reducer;

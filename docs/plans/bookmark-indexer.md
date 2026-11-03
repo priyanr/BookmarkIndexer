@@ -1,7 +1,7 @@
 # Bookmark Indexer
 
 ## Context
-The repo is an empty scaffold: rules, hooks, `tests/ArchitectureTests.cs` and the props files, with `AppName` placeholders. The goal is to index every Firefox bookmark. Import the exported HTML, load each URL in headless Lightpanda, extract the readable text, embed it with Ollama and store it in Postgres with pgvector. A Next.js UI lets the user import, browse bookmarks by status and search them. The build and run scripts go in `<publish folder>` (the empty `build.ps1` and `run.ps1` there). Containers run with `wslc`, which uses Docker-like syntax.
+The repo is an empty scaffold: rules, hooks, `tests/ArchitectureTests.cs` and the props files, with `AppName` placeholders. The goal is to index every Firefox bookmark. Import the exported HTML, load each URL in headless Lightpanda, extract the readable text, embed it with Ollama and store it in Postgres with pgvector. A Next.js UI lets the user import, browse bookmarks by status and search them. The build and run scripts go in the publish folder, outside the repo (the empty `build.ps1` and `run.ps1` there). Containers run with `wslc`, which uses Docker-like syntax.
 
 First step of execution: copy this plan to `docs/plans/bookmark-indexer.md` (workflow rule).
 
@@ -55,7 +55,7 @@ First step of execution: copy this plan to `docs/plans/bookmark-indexer.md` (wor
   - `GET /api/health` responds, Serilog logs reach Seq and `Logs\api`, and the UI shell renders.
 - **Test seam:** ArchitectureTests pass once projects exist.
 - **New types:** `AppDbContext` (EF context).
-- **Files touched:** `BookmarkIndexer.sln`, the 5 csproj files, `Directory.Packages.props`, `CLAUDE.md`, `GLOSSARY.md`, `tests/ArchitectureTests.cs` (moved to `BookmarkIndexer.Tests/`, renamed), `ui/` skeleton (`package.json`, `next.config.js`, `src/app/layout.js`, `src/store/store.js`), `<publish folder>\build.ps1` and `run.ps1`.
+- **Files touched:** `BookmarkIndexer.sln`, the 5 csproj files, `Directory.Packages.props`, `CLAUDE.md`, `GLOSSARY.md`, `tests/ArchitectureTests.cs` (moved to `BookmarkIndexer.Tests/`, renamed), `ui/` skeleton (`package.json`, `next.config.js`, `src/app/layout.js`, `src/store/store.js`), `build.ps1` and `run.ps1` in the publish folder.
 - [x] done
 
 ### Stage 1: Import, then list as Pending

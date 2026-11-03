@@ -8,8 +8,8 @@ Indexes a single user's browser bookmarks. It imports a bookmarks HTML export (F
 - Test: `dotnet test`
 - Run (dev): `dotnet run --project BookmarkIndexer.Web` and `npm run dev` in `ui/`. The containers must be running; `run.ps1` starts them.
 - New migration: `dotnet ef migrations add <Name> -p BookmarkIndexer.Core -s BookmarkIndexer.Web -o Model/Migrations`
-- Publish: `<publish folder>\build.ps1` starts Postgres (the tests need it), then builds, tests and publishes to `Api\` and `Ui\` there. Both scripts share the container helpers in `containers.ps1`.
-- Run (published): `<publish folder>\run.ps1` starts the wslc containers (Postgres, Ollama, Lightpanda), the API on :5080 and the UI on :3000. API logs roll daily in `Logs\api` there.
+- Publish: `build.ps1` in the publish folder (outside this repo) starts Postgres (the tests need it), then builds, tests and publishes to `Api\` and `Ui\` there. Both scripts share the container helpers in `containers.ps1`.
+- Run (published): `run.ps1` in the publish folder starts the wslc containers (Postgres, Ollama, Lightpanda), the API on :5080 and the UI on :3000. API logs roll daily in `Logs\api` there.
 - Run (containers, Windows or Linux): `docker compose up -d --build`, UI on :3000. `compose.yaml`, `Dockerfile` and `ui/Dockerfile`; see `README.md`.
 
 ## Layout

@@ -5,7 +5,7 @@ The words this system uses, what they mean here, and the name they have in code.
 | Term | Meaning in this system | In code | Not the same as |
 |------|------------------------|---------|-----------------|
 | Bookmark | One saved URL from a browser export. Unique by URL. | `Bookmark` entity | Page content: the text extracted when the bookmark is indexed |
-| Import | Loading a bookmark export file into the system. New URLs become Pending, and existing ones keep their content. | `ImportService`, `IBookmarkImporter` | Indexing: fetching and embedding the page |
+| Import | Loading a bookmark export file, or a pasted list of URLs, into the system. New URLs become Pending, and existing ones keep their content. | `ImportService`, `IBookmarkImporter` | Indexing: fetching and embedding the page |
 | Index status | Where a bookmark is in processing: Pending, Indexed or Failed. | `IndexStatus` enum (Shared) | |
 | Chunk | A slice of a bookmark's extracted text, with its embedding and full-text vector. | `BookmarkChunk` entity | |
 

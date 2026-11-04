@@ -15,6 +15,14 @@ export function importBookmarks(file) {
   return send('/api/imports', { method: 'POST', body: form });
 }
 
+export function importUrls(urls) {
+  return send('/api/imports/urls', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ urls }),
+  });
+}
+
 export function getBookmarks(status, page) {
   const query = new URLSearchParams({ page });
   if (status) {

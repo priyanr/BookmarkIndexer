@@ -2,6 +2,13 @@
 
 What changed and which existing features it affected. Newest first.
 
+## 2026-11-04: Paste URLs to import
+Plan: `docs/plans/paste-urls-import.md`, Stage 1. `POST api/imports/urls` and a second form on the Import page: a
+textarea for pasting URLs (one per line). New URLs become Pending with no title or folder; a URL already imported
+is left as it is (skipped) instead of updated, since pasted URLs carry no title or folder to update.
+
+Affected existing features: none. The HTML file import is unchanged.
+
 ## 2026-11-03: View page content
 Plan: `docs/plans/view-page-content.md`, Stages 1–2. `GET /api/bookmarks/{id}/content` and a "Content" button that
 shows the extracted text in an overlay.

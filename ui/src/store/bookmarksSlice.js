@@ -4,6 +4,7 @@ import * as api from '@/api/bookmarksApi';
 export const fetchBookmarks = createAsyncThunk('bookmarks/fetch', ({ status, page }) => api.getBookmarks(status, page));
 export const fetchCounts = createAsyncThunk('bookmarks/fetchCounts', () => api.getBookmarkCounts());
 export const importFile = createAsyncThunk('bookmarks/import', (file) => api.importBookmarks(file));
+export const importUrls = createAsyncThunk('bookmarks/importUrls', (urls) => api.importUrls(urls));
 export const fetchContent = createAsyncThunk('bookmarks/fetchContent', (id) => api.getBookmarkContent(id));
 
 // After a retry the list and counts are stale, so both are reloaded for the page being viewed.
@@ -73,6 +74,19 @@ const bookmarksSlice = createSlice({
         state.importResult = action.payload;
       })
       .addCase(importFile.rejected, (state, action) => {
+        state.importing = false;
+        state.importError = action.error.message;
+      })
+      .addCase(importUrls.pending, (state) => {
+        state.importing = true;
+        state.importResult = null;
+        state.importError = null;
+      })
+      .addCase(importUrls.fulfilled, (state, action) => {
+        state.importing = false;
+        state.importResult = action.payload;
+      })
+      .addCase(importUrls.rejected, (state, action) => {
         state.importing = false;
         state.importError = action.error.message;
       })

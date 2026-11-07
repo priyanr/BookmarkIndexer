@@ -6,6 +6,9 @@ COPY . .
 # Next writes the /api rewrite target into the build, so the API address is fixed here, not at run time.
 ARG API_URL=http://api:5080
 ENV API_URL=$API_URL
+# Sub-path the UI is served under (k8s: /bm); empty serves from the root. Also fixed into the build.
+ARG NEXT_PUBLIC_BASE_PATH=
+ENV NEXT_PUBLIC_BASE_PATH=$NEXT_PUBLIC_BASE_PATH
 RUN npm run build
 
 FROM node:22-alpine

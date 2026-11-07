@@ -2,6 +2,15 @@
 
 What changed and which existing features it affected. Newest first.
 
+## 2026-11-07: Login with mws.priyan.in
+Plan: `docs/plans/authentication.md`. `Auth:Enabled` (default false) turns on OAuth2 login against mws.priyan.in
+without discovery, the same flow as PersonalAI: `api/auth/{status,login,exchange,refresh,logout}`, JwtBearer with the
+shared HMAC key plus introspection, and a global authorize filter. The UI gets `/auth/callback`, an auth gate, a Log
+out button and an optional base path (`NEXT_PUBLIC_BASE_PATH`) for k8s.
+
+Affected existing features: none while `Auth:Enabled` is false. When it is true, every page needs a login first and
+every API call except `/api/health` needs a bearer token.
+
 ## 2026-11-04: Paste URLs to import
 Plan: `docs/plans/paste-urls-import.md`, Stage 1. `POST api/imports/urls` and a second form on the Import page: a
 textarea for pasting URLs (one per line). New URLs become Pending with no title or folder; a URL already imported

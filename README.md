@@ -6,7 +6,7 @@ BookmarkIndexer imports a Firefox, Chrome or Edge bookmarks export, loads every 
 text and indexes it for hybrid search: meaning-based (vector) search and keyword (full-text) search, merged into one
 ranking. Everything runs on your machine; no page text or query leaves it.
 
-It is built for one person and has no login. Run it on localhost only.
+It is built for one person. Login is off by default, so run it on localhost only unless you turn login on (see Login below).
 
 ## What it does
 
@@ -138,7 +138,15 @@ Settings are in `BookmarkIndexer.Web/appsettings.json`. Override any of them wit
 | `Serilog__WriteTo__File__Args__path` | `Logs/api/log-.txt`, relative to the API's working folder |
 
 The UI proxies `/api/*` to `API_URL` (default `http://localhost:5080`). Next.js fixes it at build time, so set it
-before `npm run build`.
+before `npm run build`. Set `NEXT_PUBLIC_BASE_PATH` (for example `/bm`) the same way to serve the UI under a sub-path.
+
+### Login
+
+`Auth__Enabled=true` makes every API call need a login with an OAuth2 provider that has no discovery (mws.priyan.in):
+the endpoints are listed under `Auth` in `appsettings.json`. Also set `Auth__ClientId`, `Auth__ClientSecret`,
+`Auth__JwtKey` (the provider's shared signing key) and `Auth__RedirectUri` (`<UI address>/auth/callback`, registered
+with the provider). The UI sends you to the provider, keeps the tokens in the browser and shows a Log out button.
+`/api/health` stays open.
 
 ## Known limitations
 
@@ -148,7 +156,7 @@ before `npm run build`.
   to index. Their error is shown and you can Retry them.
 - Full-text search needs every word of the query to appear in one chunk. A misspelt word leaves only vector search,
   which is fuzzier. Two or three distinctive, correctly spelt words work best.
-- No authentication: anyone who can reach port 3000 can read and change your bookmarks.
+- With login off (the default) anyone who can reach port 3000 can read and change your bookmarks.
 
 ## How this was built
 

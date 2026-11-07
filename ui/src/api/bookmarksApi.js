@@ -1,13 +1,6 @@
 // Every call to the API goes through this file; thunks in the store call these functions.
 
-async function send(path, options) {
-  const response = await fetch(path, options);
-  const body = await response.json().catch(() => null);
-  if (!response.ok) {
-    throw new Error(body?.detail || body?.title || `Request failed (${response.status})`);
-  }
-  return body;
-}
+import { send } from './http';
 
 export function importBookmarks(file) {
   const form = new FormData();

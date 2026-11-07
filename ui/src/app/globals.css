@@ -2,6 +2,7 @@ body { margin: 0; font-family: system-ui, sans-serif; color: #1f2328; background
 .top { display: flex; gap: 2rem; align-items: center; padding: 0.75rem 1.5rem; background: #fff; border-bottom: 1px solid #d0d7de; }
 .top nav { display: flex; gap: 1rem; }
 .top a { color: #0969da; text-decoration: none; }
+.top .logout { margin-left: auto; }
 main { max-width: 1100px; margin: 1.5rem auto; padding: 0 1.5rem; }
 h1 { font-size: 1.4rem; }
 .row { display: flex; gap: 1rem; align-items: center; margin: 1rem 0; }
